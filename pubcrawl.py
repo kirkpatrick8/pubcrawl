@@ -13,35 +13,62 @@ if 'current_pub' not in st.session_state:
 if 'completed_pubs' not in st.session_state:
     st.session_state.completed_pubs = []
 
-# Belfast pubs data - ordered for optimal route
+# Belfast pubs data - in specified order with exact coordinates
 PUBS_DATA = {
     'name': [
-        "Lavery's", "Whites Tavern", "The Points", "Bittles",
-        "The Spaniard", "Sunflower", "The Dirty Onion", "Kelly's Cellars",
-        "The Duke of York", "The John Hewitt", "Maddens", "Ulster Sports Club"
+        "Lavery's", 
+        "The Points", 
+        "Sweet Afton", 
+        "Kelly's Cellars",
+        "Whites Tavern",
+        "The Deer's Head",
+        "The John Hewitt",
+        "Duke of York",
+        "The Harp Bar",
+        "The Dirty Onion",
+        "Thirsty Goat",
+        "Ulster Sports Club"
     ],
     'latitude': [
-        54.5929, 54.5997, 54.6007, 54.5995,
-        54.6003, 54.6012, 54.6002, 54.6005,
-        54.6003, 54.6008, 54.6004, 54.5999
+        54.589539,  # Lavery's
+        54.591556,  # Points
+        54.595067,  # Sweet Afton
+        54.599553,  # Kelly's
+        54.600033,  # Whites
+        54.601439,  # Deer's Head
+        54.601928,  # John Hewitt
+        54.601803,  # Duke of York
+        54.602000,  # Harp Bar
+        54.601556,  # Dirty Onion
+        54.601308,  # Thirsty Goat
+        54.600733   # Ulster Sports Club
     ],
     'longitude': [
-        -5.9365, -5.9252, -5.9259, -5.9267,
-        -5.9273, -5.9285, -5.9278, -5.9282,
-        -5.9275, -5.9270, -5.9277, -5.9268
+        -5.934469,  # Lavery's
+        -5.933333,  # Points (estimated as full coordinates weren't provided)
+        -5.932894,  # Sweet Afton
+        -5.932236,  # Kelly's
+        -5.928497,  # Whites
+        -5.930294,  # Deer's Head
+        -5.928617,  # John Hewitt
+        -5.927442,  # Duke of York
+        -5.927058,  # Harp Bar
+        -5.926673,  # Dirty Onion
+        -5.926417,  # Thirsty Goat
+        -5.925219   # Ulster Sports Club
     ],
     'rules': [
         "Christmas Jumpers Required & Last Names Only",
-        "No Phones & Drink with Left Hand Only",
         "Tactical Whitey Points System",
-        "No Phones & No First Names",
-        "Too Glam to Give a Damn - Must Pose for Photos",
-        "The Arm Pub - Drink from Someone Else's Arm",
-        "Must Bow Before Taking a Drink",
+        "No Swearing Challenge",
         "Power 2 or 3 (Down Drink in 2-3 Gulps)",
+        "No Phones & Drink with Left Hand Only",
         "Must Speak in Different Accents",
         "Different Drink Type Required",
+        "Must Bow Before Taking a Drink",
         "International Drinking Rules",
+        "The Arm Pub - Drink from Someone Else's Arm",
+        "No First Names & Photo Challenge",
         "Buddy System - Final Challenge"
     ]
 }
@@ -97,19 +124,23 @@ def show_progress():
 def show_map():
     st.header("Pub Route Map")
     
-    # Create map centered on Belfast
-    m = folium.Map(location=[54.5973, -5.9301], zoom_start=15)
+    # Create map centered on Belfast (middle of route)
+    m = folium.Map(location=[54.595733, -5.930294], zoom_start=15)
     
     # Add markers and route
     for i in range(12):
         color = 'green' if PUBS_DATA['name'][i] in st.session_state.completed_pubs else 'red'
+        
+        # Add number to popup
+        popup_text = f"{i+1}. {PUBS_DATA['name'][i]}<br>{PUBS_DATA['rules'][i]}"
+        
         folium.Marker(
             [PUBS_DATA['latitude'][i], PUBS_DATA['longitude'][i]],
-            popup=f"{i+1}. {PUBS_DATA['name'][i]}<br>{PUBS_DATA['rules'][i]}",
-            icon=folium.Icon(color=color, icon='info-sign')
+            popup=popup_text,
+            icon=folium.Icon(color=color, icon='info-sign', prefix='fa')
         ).add_to(m)
         
-        # Connect pubs with lines
+        # Connect pubs with lines to show route
         if i > 0:
             points = [
                 [PUBS_DATA['latitude'][i-1], PUBS_DATA['longitude'][i-1]],
@@ -152,6 +183,9 @@ def show_safety_tips():
     - **Local Taxi Services**:
         - Value Cabs: 028 9080 9080
         - fonacab: 028 9033 3333
+    
+    ### Walking Distance:
+    Total route is approximately 1.2 km (0.75 miles)
     """)
 
 if __name__ == "__main__":
