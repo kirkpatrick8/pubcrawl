@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import folium
 from streamlit_folium import folium_static
+import random
+import time
 
 # Page config
 st.set_page_config(page_title="Belfast 12 Pubs of Christmas", page_icon="🍺", layout="wide")
@@ -11,6 +13,8 @@ if 'current_pub' not in st.session_state:
     st.session_state.current_pub = 0
 if 'completed_pubs' not in st.session_state:
     st.session_state.completed_pubs = []
+if 'punishment_history' not in st.session_state:
+    st.session_state.punishment_history = []
 
 # Belfast pubs data - in specified order with exact coordinates
 PUBS_DATA = {
@@ -72,6 +76,21 @@ PUBS_DATA = {
     ]
 }
 
+PUNISHMENTS = [
+    "Buy a round for your group",
+    "Irish dance for 30 seconds",
+    "Tell an embarrassing story",
+    "Down your drink",
+    "Add a shot to your next drink",
+    "Sing a Christmas carol",
+    "Switch drinks with someone",
+    "No phone for next 2 pubs",
+    "Wear your jumper inside out",
+    "Give someone your drink",
+    "Talk in an accent for 10 mins",
+    "Do 10 jumping jacks"
+]
+
 def mark_pub_complete():
     if st.session_state.current_pub < 12:
         current_pub = PUBS_DATA['name'][st.session_state.current_pub]
@@ -82,6 +101,7 @@ def mark_pub_complete():
 def reset_progress():
     st.session_state.current_pub = 0
     st.session_state.completed_pubs = []
+    st.session_state.punishment_history = []
 
 def show_progress():
     st.header("Progress Tracker")
@@ -172,10 +192,55 @@ def show_safety_tips():
     Total route is approximately 2.5 km
     """)
 
+def show_punishment_wheel():
+    st.header("Rule Breaker's Punishment Wheel")
+    
+    # Add context and instructions
+    st.write("Break a pub rule? Time to face the consequences! Spin the wheel to receive your punishment.")
+    
+    # Optional name input
+    rule_breaker = st.text_input("Enter rule breaker's name (optional):", "")
+    
+    # Create columns for layout
+    col1, col2, col3 = st.columns([1,2,1])
+    
+    with col2:
+        # Create a button to trigger the spin
+        if st.button("Spin the Wheel of Punishment"):
+            punishment = random.choice(PUNISHMENTS)
+            
+            # Show a spinning animation
+            with st.spinner("Spinning the wheel of doom..."):
+                time.sleep(2)  # Add suspense
+            
+            # Display the result with some styling
+            result = f"🎯 Punishment for {rule_breaker if rule_breaker else 'Rule Breaker'}: {punishment}"
+            st.success(result)
+            
+            # Add to punishment history
+            st.session_state.punishment_history.append({
+                'name': rule_breaker if rule_breaker else 'Anonymous',
+                'punishment': punishment,
+                'pub': PUBS_DATA['name'][st.session_state.current_pub] if st.session_state.current_pub < 12 else 'After completion'
+            })
+            
+            # Show celebration animation
+            st.balloons()
+    
+    # Show punishment history
+    if st.session_state.punishment_history:
+        st.subheader("Punishment History")
+        history_df = pd.DataFrame(st.session_state.punishment_history)
+        st.dataframe(history_df, use_container_width=True)
+        
+        if st.button("Clear Punishment History"):
+            st.session_state.punishment_history = []
+            st.experimental_rerun()
+
 def main():
     st.title("🎄 Belfast 12 Pubs of Christmas 🍺")
     
-    tabs = st.tabs(["Progress", "Map", "Rules", "Safety Tips"])
+    tabs = st.tabs(["Progress", "Map", "Rules", "Safety Tips", "Punishment Wheel"])
     
     with tabs[0]:
         show_progress()
@@ -188,6 +253,9 @@ def main():
     
     with tabs[3]:
         show_safety_tips()
+        
+    with tabs[4]:
+        show_punishment_wheel()
 
 if __name__ == "__main__":
     main()
