@@ -108,7 +108,7 @@ def show_progress():
         st.success("🎉 Congratulations! You've completed the Belfast 12 Pubs of Christmas! 🎉")
 
 def show_map():
-    st.header("Pub Route Map")
+    st.header("Candy Cane Pub Route Map")
     
     # Create map centered on Belfast (middle of route)
     m = folium.Map(location=[54.595733, -5.930294], zoom_start=15)
