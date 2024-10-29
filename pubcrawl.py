@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import folium
 from streamlit_folium import folium_static
-from datetime import datetime
 
 # Page config
 st.set_page_config(page_title="Belfast 12 Pubs of Christmas", page_icon="🍺", layout="wide")
@@ -45,7 +44,7 @@ PUBS_DATA = {
     ],
     'longitude': [
         -5.934469,  # Lavery's
-        -5.933333,  # Points (estimated as full coordinates weren't provided)
+        -5.933333,  # Points
         -5.932894,  # Sweet Afton
         -5.932236,  # Kelly's
         -5.928497,  # Whites
@@ -73,22 +72,16 @@ PUBS_DATA = {
     ]
 }
 
-def main():
-    st.title("🎄 Belfast 12 Pubs of Christmas 🍺")
-    
-    tabs = st.tabs(["Progress", "Map", "Rules", "Safety Tips"])
-    
-    with tabs[0]:
-        show_progress()
-    
-    with tabs[1]:
-        show_map()
-    
-    with tabs[2]:
-        show_rules()
-    
-    with tabs[3]:
-        show_safety_tips()
+def mark_pub_complete():
+    if st.session_state.current_pub < 12:
+        current_pub = PUBS_DATA['name'][st.session_state.current_pub]
+        if current_pub not in st.session_state.completed_pubs:
+            st.session_state.completed_pubs.append(current_pub)
+            st.session_state.current_pub += 1
+
+def reset_progress():
+    st.session_state.current_pub = 0
+    st.session_state.completed_pubs = []
 
 def show_progress():
     st.header("Progress Tracker")
@@ -108,16 +101,9 @@ def show_progress():
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Mark Current Pub as Complete"):
-                if current_pub not in st.session_state.completed_pubs:
-                    st.session_state.completed_pubs.append(current_pub)
-                    st.session_state.current_pub += 1
-                    st.experimental_rerun()
+            st.button("Mark Current Pub as Complete", on_click=mark_pub_complete)
         with col2:
-            if st.button("Reset Progress"):
-                st.session_state.current_pub = 0
-                st.session_state.completed_pubs = []
-                st.experimental_rerun()
+            st.button("Reset Progress", on_click=reset_progress)
     else:
         st.success("🎉 Congratulations! You've completed the Belfast 12 Pubs of Christmas! 🎉")
 
@@ -137,7 +123,7 @@ def show_map():
         folium.Marker(
             [PUBS_DATA['latitude'][i], PUBS_DATA['longitude'][i]],
             popup=popup_text,
-            icon=folium.Icon(color=color, icon='info-sign', prefix='fa')
+            icon=folium.Icon(color=color, icon='info-sign')
         ).add_to(m)
         
         # Connect pubs with lines to show route
@@ -162,8 +148,7 @@ def show_rules():
                   for pub in PUBS_DATA['name']]
     })
     
-    st.dataframe(df.style.set_properties(**{'text-align': 'left'}), 
-                use_container_width=True)
+    st.dataframe(df, use_container_width=True)
 
 def show_safety_tips():
     st.header("Safety Tips & Guidelines")
@@ -187,6 +172,23 @@ def show_safety_tips():
     ### Walking Distance:
     Total route is approximately 1.2 km (0.75 miles)
     """)
+
+def main():
+    st.title("🎄 Belfast 12 Pubs of Christmas 🍺")
+    
+    tabs = st.tabs(["Progress", "Map", "Rules", "Safety Tips"])
+    
+    with tabs[0]:
+        show_progress()
+    
+    with tabs[1]:
+        show_map()
+    
+    with tabs[2]:
+        show_rules()
+    
+    with tabs[3]:
+        show_safety_tips()
 
 if __name__ == "__main__":
     main()
