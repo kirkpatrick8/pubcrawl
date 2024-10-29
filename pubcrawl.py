@@ -77,7 +77,7 @@ PUBS_DATA = {
 }
 
 PUNISHMENTS = [
-    "Buy a round for your group",
+    "Buy Mark a Drink",
     "Irish dance for 30 seconds",
     "Tell an embarrassing story",
     "Down your drink",
