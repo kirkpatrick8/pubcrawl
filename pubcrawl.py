@@ -57,15 +57,15 @@ PUBS_DATA = {
         -5.925219   # Ulster Sports Club
     ],
     'rules': [
-        "Christmas Jumpers Required & Last Names Only",
-        "Tactical Whitey Points System",
+        "Christmas Jumpers Required",
+        "Last Names Only",
         "No Swearing Challenge",
-        "Power 2 or 3 (Down Drink in 2-3 Gulps)",
+        "Power Hour (Down Drink in 2-3 Gulps)",
         "No Phones & Drink with Left Hand Only",
         "Must Speak in Different Accents",
         "Different Drink Type Required",
         "Must Bow Before Taking a Drink",
-        "International Drinking Rules",
+        "Double Parked",
         "The Arm Pub - Drink from Someone Else's Arm",
         "No First Names & Photo Challenge",
         "Buddy System - Final Challenge"
@@ -155,7 +155,6 @@ def show_safety_tips():
     
     st.markdown("""
     ### Important Reminders:
-    - 🚶‍♂️ Always have a designated walker/supervisor
     - 🚕 Save local taxi numbers in your phone
     - 💧 Drink water between pubs
     - 🍽️ Eat a proper meal before starting
@@ -170,7 +169,7 @@ def show_safety_tips():
         - fonacab: 028 9033 3333
     
     ### Walking Distance:
-    Total route is approximately 1.2 km (0.75 miles)
+    Total route is approximately 2.5 km
     """)
 
 def main():
