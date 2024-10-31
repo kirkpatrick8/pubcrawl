@@ -320,8 +320,12 @@ def show_leaderboard():
         # Process data for display
         display_data = []
         for _, row in participants_df.iterrows():
-            completed_count = len(row['CompletedPubs'].split(',')) if row['CompletedPubs'] else 0
-            current_pub = PUBS_DATA['name'][int(row['CurrentPub'])] if int(row['CurrentPub']) < 12 else 'Finished'
+            # Convert NaN in 'CompletedPubs' to an empty string
+            completed_pubs = row['CompletedPubs'] if pd.notna(row['CompletedPubs']) else ''
+            completed_count = len(completed_pubs.split(','))
+            
+            # Avoid error if 'CurrentPub' is NaN or out of range
+            current_pub = PUBS_DATA['name'][int(row['CurrentPub'])] if pd.notna(row['CurrentPub']) and int(row['CurrentPub']) < 12 else 'Finished'
             
             display_data.append({
                 'Name': row['Name'],
@@ -330,6 +334,7 @@ def show_leaderboard():
                 'Points': int(row['Points'])
             })
         
+        # Sort and display
         df = pd.DataFrame(display_data)
         df = df.sort_values(['Points', 'Pubs Completed'], ascending=[False, False])
         st.dataframe(df, use_container_width=True)
