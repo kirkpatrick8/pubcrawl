@@ -310,33 +310,30 @@ def show_punishment_wheel():
         st.success(f"Your punishment is: {punishment}")
 
 def show_leaderboard():
-    """Display leaderboard"""
-    st.header("🏆 Group Progress")
+    """Display the leaderboard of participants"""
+    participants_df, _ = load_data()
     
-    participants_df, punishments_df = load_data()
-    
-    if not participants_df.empty:
-        # Process data for display
-        display_data = []
-        for _, row in participants_df.iterrows():
-            completed_count = len(row['CompletedPubs'].split(',')) if row['CompletedPubs'] else 0
-            current_pub = PUBS_DATA['name'][int(row['CurrentPub'])] if int(row['CurrentPub']) < 12 else 'Finished'
-            
-            display_data.append({
-                'Name': row['Name'],
-                'Pubs Completed': completed_count,
-                'Current Pub': current_pub,
-                'Points': int(row['Points'])
-            })
+    # Process data for display
+    display_data = []
+    for _, row in participants_df.iterrows():
+        # Ensure CompletedPubs is treated as an empty string if it's a float or NaN
+        completed_pubs = row['CompletedPubs'] if isinstance(row['CompletedPubs'], str) else ''
+        completed_count = len(completed_pubs.split(',')) if completed_pubs else 0
         
-        df = pd.DataFrame(display_data)
-        df = df.sort_values(['Points', 'Pubs Completed'], ascending=[False, False])
-        st.dataframe(df, use_container_width=True)
-    
-    # Show punishment history
-    if not punishments_df.empty:
-        st.subheader("😈 Punishment History")
-        st.dataframe(punishments_df, use_container_width=True)
+        current_pub = PUBS_DATA['name'][int(row['CurrentPub'])] if row['CurrentPub'] < len(PUBS_DATA) else 'N/A'
+        
+        display_data.append({
+            'Name': row['Name'],
+            'Completed Count': completed_count,
+            'Current Pub': current_pub,
+            'Points': row['Points']
+        })
+
+    # Display the leaderboard
+    st.header("Leaderboard")
+    leaderboard_df = pd.DataFrame(display_data)
+    st.table(leaderboard_df)
+
 
 def main():
     st.title("🎄 Belfast 12 Pubs of Christmas 🍺")
