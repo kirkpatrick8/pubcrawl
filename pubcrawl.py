@@ -214,20 +214,28 @@ def show_progress(name):
 def mark_pub_complete(name):
     """Mark current pub as completed"""
     participants_df, punishments_df = load_data()
-    participant_idx = participants_df[participants_df['Name'] == name].index[0]
     
-    current_pub = int(participants_df.loc[participant_idx, 'CurrentPub'])
-    completed_pubs_str = participants_df.loc[participant_idx, 'CompletedPubs'] if isinstance(participants_df.loc[participant_idx, 'CompletedPubs'], str) else ''
-    completed_pubs = completed_pubs_str.split(',') if completed_pubs_str else []
-    
-    if current_pub < 12:
-        completed_pubs.append(PUBS_DATA['name'][current_pub])
-        participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
-        participants_df.loc[participant_idx, 'CurrentPub'] = current_pub + 1
-        participants_df.loc[participant_idx, 'Points'] += 100
+    # Find the participant by name
+    matched_participants = participants_df[participants_df['Name'] == name]
+
+    if not matched_participants.empty:  # Check if there are any matches
+        participant_idx = matched_participants.index[0]
         
-        save_data(participants_df, punishments_df)
-        st.rerun()
+        current_pub = int(participants_df.loc[participant_idx, 'CurrentPub'])
+        completed_pubs_str = participants_df.loc[participant_idx, 'CompletedPubs'] if isinstance(participants_df.loc[participant_idx, 'CompletedPubs'], str) else ''
+        completed_pubs = completed_pubs_str.split(',') if completed_pubs_str else []
+
+        if current_pub < 12:
+            completed_pubs.append(PUBS_DATA['name'][current_pub])
+            participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
+            participants_df.loc[participant_idx, 'CurrentPub'] = current_pub + 1
+            participants_df.loc[participant_idx, 'Points'] += 100
+
+            save_data(participants_df, punishments_df)
+            st.rerun()
+    else:
+        st.warning(f"No participant found with the name: {name}")  # Show a warning or handle as needed
+
 
 
 def show_map():
