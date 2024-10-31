@@ -29,7 +29,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # GitHub configuration
-GITHUB_TOKEN = st.secrets["Pubcrawl"]["GITHUB_TOKEN"]
+GITHUB_TOKEN = st.secrets["Pubcrawl"]["GITHUB_TOKEN"]  # Updated
 REPO_NAME = "kirkpatrick8/pubcrawl"  # Your specific repo
 BRANCH_NAME = "main"
 
@@ -62,14 +62,6 @@ PUBS_DATA = {
     ]
 }
 
-PUNISHMENTS = [
-    "Buy Mark a Drink", "Irish dance for 30 seconds", "Tell an embarrassing story",
-    "Down your drink", "Add a shot to your next drink", "Sing a Christmas carol",
-    "Switch drinks with someone", "No phone for next 2 pubs", 
-    "Wear your jumper inside out", "Give someone your drink",
-    "Talk in an accent for 10 mins", "Do 10 jumping jacks"
-]
-
 # Load and save functions
 @st.cache_data(ttl=60)
 def load_data():
@@ -86,15 +78,11 @@ def load_data():
         content = repo.get_contents(punishments_file, ref=BRANCH_NAME)
         punishments_df = pd.read_csv(io.StringIO(content.decoded_content.decode()))
         
-        # Ensure achievements column exists
-        if 'Achievements' not in participants_df.columns:
-            participants_df['Achievements'] = ''
-        
         return participants_df, punishments_df
     except Exception as e:
         st.sidebar.error(f"Error loading data: {e}")
         # Return empty DataFrames if files don't exist
-        participants_df = pd.DataFrame(columns=['Name', 'CurrentPub', 'CompletedPubs', 'Points', 'Achievements'])
+        participants_df = pd.DataFrame(columns=['Name', 'CurrentPub', 'CompletedPubs', 'Points'])
         punishments_df = pd.DataFrame(columns=['Time', 'Name', 'Pub', 'Punishment'])
         return participants_df, punishments_df
 
@@ -139,8 +127,9 @@ def save_data(participants_df, punishments_df):
                 branch=BRANCH_NAME
             )
     except Exception as e:
-        st.sidebar.error(f"Error saving data: {e}")
+        st.sidebar.error(f"Error saving data: {e}") 
 
+# UI and Logic Functions
 def name_entry_modal():
     """Display modal for name entry"""
     if 'current_participant' not in st.session_state:
@@ -157,33 +146,12 @@ def name_entry_modal():
                         'Name': name,
                         'CurrentPub': 0,
                         'CompletedPubs': '',
-                        'Points': 0,
-                        'Achievements': ''
+                        'Points': 0
                     }])
                     participants_df = pd.concat([participants_df, new_participant], ignore_index=True)
                     save_data(participants_df, load_data()[1])
                 st.session_state.current_participant = name
                 st.rerun()
-
-def check_achievements(participants_df, participant_idx):
-    """Check and update achievements for a participant"""
-    current_participant = participants_df.iloc[participant_idx]
-    achievements = current_participant['Achievements'].split(',') if current_participant['Achievements'] else []
-
-    # Example achievement checks
-    if len(current_participant['CompletedPubs'].split(',')) >= 3 and "3 Pubs Completed" not in achievements:
-        achievements.append("3 Pubs Completed")
-        st.success("🎉 Achievement Unlocked: 3 Pubs Completed! 🎉")
-
-    if len(current_participant['CompletedPubs'].split(',')) >= 6 and "6 Pubs Completed" not in achievements:
-        achievements.append("6 Pubs Completed")
-        st.success("🎉 Achievement Unlocked: 6 Pubs Completed! 🎉")
-
-    if len(current_participant['CompletedPubs'].split(',')) >= 12 and "All Pubs Completed" not in achievements:
-        achievements.append("All Pubs Completed")
-        st.success("🎉 Achievement Unlocked: All Pubs Completed! 🎉")
-    
-    participants_df.at[participant_idx, 'Achievements'] = ','.join(achievements)
 
 def show_progress(name):
     """Show progress for current participant"""
@@ -193,87 +161,64 @@ def show_progress(name):
     st.header(f"Progress Tracker for {name}")
     
     # Progress calculations
-    completed_pubs = participant['CompletedPubs'].split(',') if participant['CompletedPubs'] else []
+    completed_pubs = participant['CompletedPubs'].split(',') if isinstance(participant['CompletedPubs'], str) else []
     progress = len(completed_pubs)
     current_pub = int(participant['CurrentPub'])
     
     # Display progress
     st.progress(progress/12)
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
+    
     with col1:
-        st.metric("Pubs Completed", f"{progress}/12")
+        st.metric("Completed Pubs", progress, "12")
+    
     with col2:
-        st.metric("Pubs Remaining", f"{12-progress}")
-    with col3:
-        st.metric("Points", int(participant['Points']))
-    
-    # Current pub information
-    if current_pub < 12:
-        current_pub_name = PUBS_DATA['name'][current_pub]
-        current_rule = PUBS_DATA['rules'][current_pub]
-        
-        st.subheader(f"Current Pub: {current_pub_name}")
-        st.info(f"Rule: {current_rule}")
-        
-        if st.button("Mark Current Pub as Complete", type="primary"):
-            mark_pub_complete(name)
-    else:
-        st.success("🎉 You've completed all pubs! 🎉")
-
-def mark_pub_complete(name):
-    """Mark current pub as completed and update achievements"""
-    participants_df, punishments_df = load_data()
-    participant_idx = participants_df[participants_df['Name'] == name].index[0]
-    
-    current_pub = int(participants_df.loc[participant_idx, 'CurrentPub'])
-    completed_pubs = participants_df.loc[participant_idx, 'CompletedPubs'].split(',') if participants_df.loc[participant_idx, 'CompletedPubs'] else []
-    
-    if current_pub < 12:
-        completed_pubs.append(PUBS_DATA['name'][current_pub])
-        participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
-        participants_df.loc[participant_idx, 'CurrentPub'] = current_pub + 1
-        participants_df.loc[participant_idx, 'Points'] += 100
-        
-        # Check for achievements after updating
-        check_achievements(participants_df, participant_idx)
-
-        save_data(participants_df, punishments_df)
-        st.rerun()
+        st.metric("Current Pub", PUBS_DATA['name'][current_pub] if current_pub < len(PUBS_DATA['name']) else "N/A")
 
 def show_leaderboard():
-    """Display leaderboard"""
-    st.header("🏆 Group Progress")
+    """Display leaderboard for participants"""
+    participants_df, _ = load_data()
     
-    participants_df, punishments_df = load_data()
-    
-    if not participants_df.empty:
-        # Process data for display
-        display_data = []
-        for _, row in participants_df.iterrows():
-            completed_count = len(row['CompletedPubs'].split(',')) if row['CompletedPubs'] else 0
-            current_pub = PUBS_DATA['name'][int(row['CurrentPub'])] if int(row['CurrentPub']) < 12 else 'Finished'
-            
-            display_data.append({
-                'Name': row['Name'],
-                'Pubs Completed': completed_count,
-                'Current Pub': current_pub,
-                'Points': int(row['Points']),
-                'Achievements': row['Achievements']
-            })
+    # Process data for display
+    display_data = []
+    for _, row in participants_df.iterrows():
+        completed_count = len(row['CompletedPubs'].split(',')) if isinstance(row['CompletedPubs'], str) else 0
+        current_pub = PUBS_DATA['name'][int(row['CurrentPub'])] if row['CurrentPub'] is not None else "N/A"
         
-        df = pd.DataFrame(display_data)
-        df = df.sort_values(['Points', 'Pubs Completed'], ascending=[False, False])
-        st.dataframe(df, use_container_width=True)
+        display_data.append({
+            "Name": row['Name'],
+            "Completed Pubs": completed_count,
+            "Current Pub": current_pub,
+            "Points": int(row['Points'])
+        })
     
-    # Show punishment history
-    if not punishments_df.empty:
-        st.subheader("😈 Punishment History")
-        st.dataframe(punishments_df, use_container_width=True)
+    # Display leaderboard
+    leaderboard_df = pd.DataFrame(display_data)
+    st.write(leaderboard_df)
 
-# Main app logic
-name_entry_modal()
+# Main script logic
+if __name__ == "__main__":
+    name_entry_modal()
+    
+    if st.session_state.current_participant:
+        st.sidebar.title("Options")
+        st.sidebar.button("Reset Progress", on_click=lambda: reset_progress(st.session_state.current_participant))
+        
+        # Show tabs for the different sections
+        tabs = st.tabs(["Maps", "Rules", "Punishments", "Safety Tips", "Leaderboard"])
 
-if st.session_state.current_participant:
-    show_progress(st.session_state.current_participant)
-    show_leaderboard()
+        with tabs[0]:
+            show_map()  # Your existing map function
+
+        with tabs[1]:
+            show_rules()  # Define this function to display the rules
+
+        with tabs[2]:
+            show_punishments()  # Define this function to display punishments
+
+        with tabs[3]:
+            show_safety_tips()  # Define this function to display safety tips
+
+        with tabs[4]:
+            show_leaderboard()  # Your existing leaderboard function
