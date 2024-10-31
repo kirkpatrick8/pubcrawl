@@ -181,31 +181,30 @@ def show_progress(name):
     
     st.header(f"Progress Tracker for {name}")
     
-# Progress calculations
-completed_pubs = (
-    participant['CompletedPubs'].split(',')
-    if isinstance(participant['CompletedPubs'], str)
-    else []
-)
-if completed_pubs == ['']:  # Handle empty string case
-    completed_pubs = []
-progress = len(completed_pubs)
+    # Progress calculations
+    completed_pubs = (
+        participant['CompletedPubs'].split(',')
+        if isinstance(participant['CompletedPubs'], str)
+        else []
+    )
+    if completed_pubs == ['']:  # Handle empty string case
+        completed_pubs = []
+    progress = len(completed_pubs)
 
-# Show progress bar
-st.progress(progress / 12)
+    # Show progress bar
+    st.progress(progress / 12)
     
-# Display progress
-st.progress(progress/12)
-    
-col1, col2, col3 = st.columns(3)
+    # Display progress metrics
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Pubs Completed", f"{progress}/12")
     with col2:
-        st.metric("Pubs Remaining", f"{12-progress}")
+        st.metric("Pubs Remaining", f"{12 - progress}")
     with col3:
         st.metric("Points", int(participant['Points']))
     
     # Current pub information
+    current_pub = int(participant['CurrentPub'])
     if current_pub < 12:
         current_pub_name = PUBS_DATA['name'][current_pub]
         current_rule = PUBS_DATA['rules'][current_pub]
