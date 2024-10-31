@@ -182,19 +182,22 @@ def show_progress(name):
     st.header(f"Progress Tracker for {name}")
     
 # Progress calculations
-    completed_pubs = (
-    participant['CompletedPubs'].split(',') 
-    if isinstance(participant['CompletedPubs'], str) 
+completed_pubs = (
+    participant['CompletedPubs'].split(',')
+    if isinstance(participant['CompletedPubs'], str)
     else []
 )
 if completed_pubs == ['']:  # Handle empty string case
     completed_pubs = []
 progress = len(completed_pubs)
+
+# Show progress bar
+st.progress(progress / 12)
     
-    # Display progress
-    st.progress(progress/12)
+# Display progress
+st.progress(progress/12)
     
-    col1, col2, col3 = st.columns(3)
+col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Pubs Completed", f"{progress}/12")
     with col2:
