@@ -164,12 +164,27 @@ def name_entry_modal():
 def show_progress(name):
     """Show progress for current participant"""
     participants_df, _ = load_data()
+    
+    # Check if participant exists, if not create new entry
+    if len(participants_df[participants_df['Name'] == name]) == 0:
+        new_participant = {
+            'Name': name,
+            'CurrentPub': 0,
+            'CompletedPubs': '',
+            'Points': 0
+        }
+        participants_df = pd.concat([participants_df, pd.DataFrame([new_participant])], ignore_index=True)
+        save_data(participants_df, load_data()[1])
+    
+    # Now safely get participant data
     participant = participants_df[participants_df['Name'] == name].iloc[0]
     
     st.header(f"Progress Tracker for {name}")
     
     # Progress calculations
     completed_pubs = participant['CompletedPubs'].split(',') if participant['CompletedPubs'] else []
+    if completed_pubs == ['']:  # Handle empty string case
+        completed_pubs = []
     progress = len(completed_pubs)
     current_pub = int(participant['CurrentPub'])
     
@@ -204,7 +219,9 @@ def mark_pub_complete(name):
     
     current_pub = int(participants_df.loc[participant_idx, 'CurrentPub'])
     completed_pubs = participants_df.loc[participant_idx, 'CompletedPubs'].split(',') if participants_df.loc[participant_idx, 'CompletedPubs'] else []
-    
+    if completed_pubs == ['']:  # Handle empty string case
+        completed_pubs = []
+        
     if current_pub < 12:
         completed_pubs.append(PUBS_DATA['name'][current_pub])
         participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
