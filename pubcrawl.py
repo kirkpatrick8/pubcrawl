@@ -29,9 +29,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # GitHub configuration
-GITHUB_TOKEN = st.secrets["Pubcrawl"]["GITHUB_TOKEN"]  # Updated
-REPO_NAME = "kirkpatrick8/pubcrawl"  # Your specific repo
+GITHUB_TOKEN = st.secrets["Pubcrawl"]["GITHUB_TOKEN"]
+REPO_NAME = "kirkpatrick8/pubcrawl"
 BRANCH_NAME = "main"
+
 # Initialize GitHub client
 g = Github(GITHUB_TOKEN)
 repo = g.get_repo(REPO_NAME)
@@ -188,13 +189,13 @@ def show_progress(name):
     current_pub = int(participant['CurrentPub'])
     
     # Display progress
-    st.progress(progress/12)
+    st.progress(progress / 12)
     
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Pubs Completed", f"{progress}/12")
     with col2:
-        st.metric("Pubs Remaining", f"{12-progress}")
+        st.metric("Pubs Remaining", f"{12 - progress}")
     with col3:
         st.metric("Points", int(participant['Points']))
     
@@ -207,6 +208,7 @@ def show_progress(name):
         st.info(f"Rule: {current_rule}")
         
         if st.button("Mark Current Pub as Complete", type="primary"):
+            st.write(f"Marking pub complete for {name}...")
             mark_pub_complete(name)
     else:
         st.success("🎉 Congratulations! You've completed the Belfast 12 Pubs of Christmas! 🎉")
@@ -223,157 +225,45 @@ def mark_pub_complete(name):
         
         current_pub = int(participants_df.loc[participant_idx, 'CurrentPub'])
         completed_pubs_str = participants_df.loc[participant_idx, 'CompletedPubs'] if isinstance(participants_df.loc[participant_idx, 'CompletedPubs'], str) else ''
+        
         completed_pubs = completed_pubs_str.split(',') if completed_pubs_str else []
-
-        if current_pub < 12:
-            completed_pubs.append(PUBS_DATA['name'][current_pub])
-            participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
-            participants_df.loc[participant_idx, 'CurrentPub'] = current_pub + 1
-            participants_df.loc[participant_idx, 'Points'] += 100
-
-            save_data(participants_df, punishments_df)
-            st.rerun()
-    else:
-        st.warning(f"No participant found with the name: {name}")  # Show a warning or handle as needed
-
-
-
-def show_map():
-    """Display interactive map"""
-    st.header("Pub Route Map")
-    
-    m = folium.Map(location=[54.595733, -5.930294], zoom_start=15)
-    
-    participants_df, _ = load_data()
-    participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
-    completed_pubs = participant['CompletedPubs'].split(',') if participant['CompletedPubs'] else []
-    
-    for i, (name, lat, lon) in enumerate(zip(
-        PUBS_DATA['name'],
-        PUBS_DATA['latitude'],
-        PUBS_DATA['longitude']
-    )):
-        # Determine marker color
-        if name in completed_pubs:
-            color = 'green'
-            icon = 'check'
-        elif i == int(participant['CurrentPub']):
-            color = 'orange'
-            icon = 'info-sign'
-        else:
-            color = 'red'
-            icon = 'beer'
+        completed_pubs.append(PUBS_DATA['name'][current_pub])
         
-        # Create popup
-        popup_text = f"""
-            <div style='width:200px'>
-                <h4>{i+1}. {name}</h4>
-                <b>Rule:</b> {PUBS_DATA['rules'][i]}<br>
-                <b>Status:</b> {'Completed' if name in completed_pubs else 'Current' if i == int(participant['CurrentPub']) else 'Pending'}
-            </div>
-        """
+        participants_df.at[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
+        participants_df.at[participant_idx, 'CurrentPub'] = current_pub + 1
         
-        folium.Marker(
-            [lat, lon],
-            popup=folium.Popup(popup_text, max_width=300),
-            icon=folium.Icon(color=color, icon=icon, prefix='fa')
-        ).add_to(m)
-        
-        # Connect pubs with lines
-        if i > 0:
-            points = [
-                [PUBS_DATA['latitude'][i-1], PUBS_DATA['longitude'][i-1]],
-                [lat, lon]
-            ]
-            folium.PolyLine(points, weight=2, color='blue', opacity=0.8).add_to(m)
-    
-    st_folium(m)
-
-def show_punishment_wheel():
-    """Display punishment wheel"""
-    st.header("Rule Breaker's Punishment Wheel")
-    
-    if st.button("Spin the Wheel", type="primary"):
-        with st.spinner("The wheel is spinning..."):
-            time.sleep(1.5)
-            
-        participants_df, punishments_df = load_data()
-        participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
-        current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
-        
+        # Random punishment assignment
         punishment = random.choice(PUNISHMENTS)
-        
-        # Record punishment
-        new_punishment = pd.DataFrame([{
-            'Time': datetime.now().strftime('%H:%M:%S'),
-            'Name': st.session_state.current_participant,
-            'Pub': current_pub,
+        punishments_df = punishments_df.append({
+            'Time': datetime.now(),
+            'Name': name,
+            'Pub': PUBS_DATA['name'][current_pub],
             'Punishment': punishment
-        }])
-        punishments_df = pd.concat([punishments_df, new_punishment], ignore_index=True)
+        }, ignore_index=True)
+        
+        print(f"Recording punishment: {punishment} for {name} at {PUBS_DATA['name'][current_pub]}")
         
         save_data(participants_df, punishments_df)
-        
-        st.snow()
-        st.success(f"Your punishment is: {punishment}")
+        st.success(f"Marked {PUBS_DATA['name'][current_pub]} as complete and assigned punishment: {punishment}")
 
-def show_leaderboard():
-    """Display the leaderboard of participants"""
-    participants_df, _ = load_data()
+def show_map():
+    """Display map of pubs"""
+    map_center = [54.596, -5.930]
+    m = folium.Map(location=map_center, zoom_start=14)
     
-    # Process data for display
-    display_data = []
-    for _, row in participants_df.iterrows():
-        # Ensure CompletedPubs is treated as an empty string if it's a float or NaN
-        completed_pubs = row['CompletedPubs'] if isinstance(row['CompletedPubs'], str) else ''
-        completed_count = len(completed_pubs.split(',')) if completed_pubs else 0
-        
-        current_pub = PUBS_DATA['name'][int(row['CurrentPub'])] if row['CurrentPub'] < len(PUBS_DATA) else 'N/A'
-        
-        display_data.append({
-            'Name': row['Name'],
-            'Completed Count': completed_count,
-            'Current Pub': current_pub,
-            'Points': row['Points']
-        })
+    for i in range(len(PUBS_DATA['name'])):
+        folium.Marker(
+            location=[PUBS_DATA['latitude'][i], PUBS_DATA['longitude'][i]],
+            popup=PUBS_DATA['name'][i],
+            icon=folium.Icon(color='blue')
+        ).add_to(m)
 
-    # Display the leaderboard
-    st.header("Leaderboard")
-    leaderboard_df = pd.DataFrame(display_data)
-    st.table(leaderboard_df)
+    st_folium(m)
 
+# Main Application
+name_entry_modal()
 
-def main():
-    st.title("🎄 Belfast 12 Pubs of Christmas 🍺")
-    
-    # Show name entry modal
-    name_entry_modal()
-    
-    if st.session_state.current_participant:
-        # Add refresh button in sidebar
-        if st.sidebar.button("Refresh Data"):
-            st.cache_data.clear()
-            st.rerun()
-        
-        # Main navigation
-        tabs = st.tabs([
-            "👥 Group Progress",
-            "📊 My Progress",
-            "🗺️ Map",
-            "🎯 Punishment Wheel"
-        ])
-        
-        with tabs[0]:
-            show_leaderboard()
-        
-        with tabs[1]:
-            show_progress(st.session_state.current_participant)
-        
-        with tabs[2]:
-            show_map()
-        
-        with tabs[3]:
-            show_punishment_wheel()
-
-if __name__ == "__main__":
-    main()
+if st.session_state.current_participant:
+    name = st.session_state.current_participant
+    show_progress(name)
+    show_map()
