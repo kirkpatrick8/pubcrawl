@@ -32,7 +32,6 @@ st.markdown("""
 GITHUB_TOKEN = st.secrets["Pubcrawl"]["GITHUB_TOKEN"]  # Updated
 REPO_NAME = "kirkpatrick8/pubcrawl"  # Your specific repo
 BRANCH_NAME = "main"
-
 # Initialize GitHub client
 g = Github(GITHUB_TOKEN)
 repo = g.get_repo(REPO_NAME)
@@ -61,6 +60,14 @@ PUBS_DATA = {
         "No First Names & Photo Challenge", "Buddy System - Final Challenge"
     ]
 }
+
+PUNISHMENTS = [
+    "Buy Mark a Drink", "Irish dance for 30 seconds", "Tell an embarrassing story",
+    "Down your drink", "Add a shot to your next drink", "Sing a Christmas carol",
+    "Switch drinks with someone", "No phone for next 2 pubs", 
+    "Wear your jumper inside out", "Give someone your drink",
+    "Talk in an accent for 10 mins", "Do 10 jumping jacks"
+]
 
 # Load and save functions
 @st.cache_data(ttl=60)
@@ -127,7 +134,7 @@ def save_data(participants_df, punishments_df):
                 branch=BRANCH_NAME
             )
     except Exception as e:
-        st.sidebar.error(f"Error saving data: {e}") 
+        st.sidebar.error(f"Error saving data: {e}")
 
 # UI and Logic Functions
 def name_entry_modal():
@@ -156,104 +163,212 @@ def name_entry_modal():
 def show_progress(name):
     """Show progress for current participant"""
     participants_df, _ = load_data()
+    
+    # Check if participant exists, if not create new entry
+    if len(participants_df[participants_df['Name'] == name]) == 0:
+        new_participant = {
+            'Name': name,
+            'CurrentPub': 0,
+            'CompletedPubs': '',
+            'Points': 0
+        }
+        participants_df = pd.concat([participants_df, pd.DataFrame([new_participant])], ignore_index=True)
+        save_data(participants_df, load_data()[1])
+    
+    # Now safely get participant data
     participant = participants_df[participants_df['Name'] == name].iloc[0]
     
     st.header(f"Progress Tracker for {name}")
     
     # Progress calculations
-    completed_pubs = participant['CompletedPubs'].split(',') if isinstance(participant['CompletedPubs'], str) else []
+    completed_pubs = participant['CompletedPubs'].split(',') if participant['CompletedPubs'] else []
+    if completed_pubs == ['']:  # Handle empty string case
+        completed_pubs = []
     progress = len(completed_pubs)
     current_pub = int(participant['CurrentPub'])
     
     # Display progress
     st.progress(progress/12)
     
-    col1, col2 = st.columns(2)
-    
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Completed Pubs", progress, "12")
-    
+        st.metric("Pubs Completed", f"{progress}/12")
     with col2:
-        st.metric("Current Pub", PUBS_DATA['name'][current_pub] if current_pub < len(PUBS_DATA['name']) else "N/A")
-
-def show_leaderboard():
-    """Display leaderboard for participants"""
-    participants_df, _ = load_data()
+        st.metric("Pubs Remaining", f"{12-progress}")
+    with col3:
+        st.metric("Points", int(participant['Points']))
     
-    # Process data for display
-    display_data = []
-    for _, row in participants_df.iterrows():
-        completed_count = len(row['CompletedPubs'].split(',')) if isinstance(row['CompletedPubs'], str) else 0
-        current_pub = PUBS_DATA['name'][int(row['CurrentPub'])] if row['CurrentPub'] is not None else "N/A"
+    # Current pub information
+    if current_pub < 12:
+        current_pub_name = PUBS_DATA['name'][current_pub]
+        current_rule = PUBS_DATA['rules'][current_pub]
         
-        display_data.append({
-            "Name": row['Name'],
-            "Completed Pubs": completed_count,
-            "Current Pub": current_pub,
-            "Points": int(row['Points'])
-        })
+        st.subheader(f"Current Pub: {current_pub_name}")
+        st.info(f"Rule: {current_rule}")
+        
+        if st.button("Mark Current Pub as Complete", type="primary"):
+            mark_pub_complete(name)
+    else:
+        st.success("🎉 Congratulations! You've completed the Belfast 12 Pubs of Christmas! 🎉")
+
+def mark_pub_complete(name):
+    """Mark current pub as completed"""
+    participants_df, punishments_df = load_data()
+    participant_idx = participants_df[participants_df['Name'] == name].index[0]
     
-    # Display leaderboard
-    leaderboard_df = pd.DataFrame(display_data)
-    st.write(leaderboard_df)
+    current_pub = int(participants_df.loc[participant_idx, 'CurrentPub'])
+    completed_pubs = participants_df.loc[participant_idx, 'CompletedPubs'].split(',') if participants_df.loc[participant_idx, 'CompletedPubs'] else []
+    if completed_pubs == ['']:  # Handle empty string case
+        completed_pubs = []
+        
+    if current_pub < 12:
+        completed_pubs.append(PUBS_DATA['name'][current_pub])
+        participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
+        participants_df.loc[participant_idx, 'CurrentPub'] = current_pub + 1
+        participants_df.loc[participant_idx, 'Points'] += 100
+        
+        save_data(participants_df, punishments_df)
+        st.rerun()
 
 def show_map():
-    """Display a map with pub locations"""
-    # Create a base map
-    base_map = folium.Map(location=[54.589539, -5.934469], zoom_start=14)
-
-    # Add markers for each pub
-    for name, lat, lon in zip(PUBS_DATA['name'], PUBS_DATA['latitude'], PUBS_DATA['longitude']):
+    """Display interactive map"""
+    st.header("Pub Route Map")
+    
+    m = folium.Map(location=[54.595733, -5.930294], zoom_start=15)
+    
+    participants_df, _ = load_data()
+    participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
+    completed_pubs = participant['CompletedPubs'].split(',') if participant['CompletedPubs'] else []
+    
+    for i, (name, lat, lon) in enumerate(zip(
+        PUBS_DATA['name'],
+        PUBS_DATA['latitude'],
+        PUBS_DATA['longitude']
+    )):
+        # Determine marker color
+        if name in completed_pubs:
+            color = 'green'
+            icon = 'check'
+        elif i == int(participant['CurrentPub']):
+            color = 'orange'
+            icon = 'info-sign'
+        else:
+            color = 'red'
+            icon = 'beer'
+        
+        # Create popup
+        popup_text = f"""
+            <div style='width:200px'>
+                <h4>{i+1}. {name}</h4>
+                <b>Rule:</b> {PUBS_DATA['rules'][i]}<br>
+                <b>Status:</b> {'Completed' if name in completed_pubs else 'Current' if i == int(participant['CurrentPub']) else 'Pending'}
+            </div>
+        """
+        
         folium.Marker(
-            location=[lat, lon],
-            popup=name,
-            icon=folium.Icon(color="blue", icon="info-sign"),
-        ).add_to(base_map)
+            [lat, lon],
+            popup=folium.Popup(popup_text, max_width=300),
+            icon=folium.Icon(color=color, icon=icon, prefix='fa')
+        ).add_to(m)
+        
+        # Connect pubs with lines
+        if i > 0:
+            points = [
+                [PUBS_DATA['latitude'][i-1], PUBS_DATA['longitude'][i-1]],
+                [lat, lon]
+            ]
+            folium.PolyLine(points, weight=2, color='blue', opacity=0.8).add_to(m)
+    
+    st_folium(m)
 
-    # Render the map in Streamlit
-    st_folium(base_map, width=700)
+def show_punishment_wheel():
+    """Display punishment wheel"""
+    st.header("Rule Breaker's Punishment Wheel")
+    
+    if st.button("Spin the Wheel", type="primary"):
+        with st.spinner("The wheel is spinning..."):
+            time.sleep(1.5)
+            
+        participants_df, punishments_df = load_data()
+        participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
+        current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
+        
+        punishment = random.choice(PUNISHMENTS)
+        
+        # Record punishment
+        new_punishment = pd.DataFrame([{
+            'Time': datetime.now().strftime('%H:%M:%S'),
+            'Name': st.session_state.current_participant,
+            'Pub': current_pub,
+            'Punishment': punishment
+        }])
+        punishments_df = pd.concat([punishments_df, new_punishment], ignore_index=True)
+        
+        save_data(participants_df, punishments_df)
+        
+        st.snow()
+        st.success(f"Your punishment is: {punishment}")
 
-# Define functions for Rules, Punishments, and Safety Tips
-def show_rules():
-    """Display the rules"""
-    st.markdown("### Rules")
-    for rule in PUBS_DATA['rules']:
-        st.write(f"- {rule}")
+def show_leaderboard():
+    """Display leaderboard"""
+    st.header("🏆 Group Progress")
+    
+    participants_df, punishments_df = load_data()
+    
+    if not participants_df.empty:
+        # Process data for display
+        display_data = []
+        for _, row in participants_df.iterrows():
+            completed_count = len(row['CompletedPubs'].split(',')) if row['CompletedPubs'] else 0
+            current_pub = PUBS_DATA['name'][int(row['CurrentPub'])] if int(row['CurrentPub']) < 12 else 'Finished'
+            
+            display_data.append({
+                'Name': row['Name'],
+                'Pubs Completed': completed_count,
+                'Current Pub': current_pub,
+                'Points': int(row['Points'])
+            })
+        
+        df = pd.DataFrame(display_data)
+        df = df.sort_values(['Points', 'Pubs Completed'], ascending=[False, False])
+        st.dataframe(df, use_container_width=True)
+    
+    # Show punishment history
+    if not punishments_df.empty:
+        st.subheader("😈 Punishment History")
+        st.dataframe(punishments_df, use_container_width=True)
 
-def show_punishments():
-    """Display the punishments"""
-    st.markdown("### Punishments")
-    st.write("1. Example Punishment 1")
-    st.write("2. Example Punishment 2")
-
-def show_safety_tips():
-    """Display safety tips"""
-    st.markdown("### Safety Tips")
-    st.write("1. Stay hydrated.")
-    st.write("2. Have a buddy system.")
-
-# Main script logic
-if __name__ == "__main__":
+def main():
+    st.title("🎄 Belfast 12 Pubs of Christmas 🍺")
+    
+    # Show name entry modal
     name_entry_modal()
     
     if st.session_state.current_participant:
-        st.sidebar.title("Options")
-        st.sidebar.button("Reset Progress", on_click=lambda: reset_progress(st.session_state.current_participant))
+        # Add refresh button in sidebar
+        if st.sidebar.button("Refresh Data"):
+            st.cache_data.clear()
+            st.rerun()
         
-        # Show tabs for the different sections
-        tabs = st.tabs(["Maps", "Rules", "Punishments", "Safety Tips", "Leaderboard"])
-
+        # Main navigation
+        tabs = st.tabs([
+            "👥 Group Progress",
+            "📊 My Progress",
+            "🗺️ Map",
+            "🎯 Punishment Wheel"
+        ])
+        
         with tabs[0]:
-            show_map()  # Your existing map function
-
+            show_leaderboard()
+        
         with tabs[1]:
-            show_rules()  # Define this function to display the rules
-
+            show_progress(st.session_state.current_participant)
+        
         with tabs[2]:
-            show_punishments()  # Define this function to display punishments
-
+            show_map()
+        
         with tabs[3]:
-            show_safety_tips()  # Define this function to display safety tips
+            show_punishment_wheel()
 
-        with tabs[4]:
-            show_leaderboard()  # Your existing leaderboard function
+if __name__ == "__main__":
+    main()
