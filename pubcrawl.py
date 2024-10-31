@@ -181,9 +181,9 @@ def show_progress(name):
     st.header(f"Progress Tracker for {name}")
     
     # Progress calculations
-    completed_pubs = participant['CompletedPubs'].split(',') if participant['CompletedPubs'] else []
-    if completed_pubs == ['']:  # Handle empty string case
-        completed_pubs = []
+    completed_pubs_str = participant['CompletedPubs'] if isinstance(participant['CompletedPubs'], str) else ''
+    completed_pubs = completed_pubs_str.split(',') if completed_pubs_str else []
+    
     progress = len(completed_pubs)
     current_pub = int(participant['CurrentPub'])
     
@@ -217,10 +217,9 @@ def mark_pub_complete(name):
     participant_idx = participants_df[participants_df['Name'] == name].index[0]
     
     current_pub = int(participants_df.loc[participant_idx, 'CurrentPub'])
-    completed_pubs = participants_df.loc[participant_idx, 'CompletedPubs'].split(',') if participants_df.loc[participant_idx, 'CompletedPubs'] else []
-    if completed_pubs == ['']:  # Handle empty string case
-        completed_pubs = []
-        
+    completed_pubs_str = participants_df.loc[participant_idx, 'CompletedPubs'] if isinstance(participants_df.loc[participant_idx, 'CompletedPubs'], str) else ''
+    completed_pubs = completed_pubs_str.split(',') if completed_pubs_str else []
+    
     if current_pub < 12:
         completed_pubs.append(PUBS_DATA['name'][current_pub])
         participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
@@ -229,6 +228,7 @@ def mark_pub_complete(name):
         
         save_data(participants_df, punishments_df)
         st.rerun()
+
 
 def show_map():
     """Display interactive map"""
