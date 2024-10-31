@@ -29,7 +29,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # GitHub configuration
-GITHUB_TOKEN = st.secrets["github"]["GITHUB_TOKEN"]
+GITHUB_TOKEN = st.secrets["Pubcrawl"]["GITHUB_TOKEN"]
 REPO_NAME = "kirkpatrick8/pubcrawl"  # Your specific repo
 BRANCH_NAME = "main"
 
