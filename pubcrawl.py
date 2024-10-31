@@ -181,8 +181,8 @@ def show_progress(name):
     
     st.header(f"Progress Tracker for {name}")
     
-    # Progress calculations
-completed_pubs = (
+# Progress calculations
+    completed_pubs = (
     participant['CompletedPubs'].split(',') 
     if isinstance(participant['CompletedPubs'], str) 
     else []
