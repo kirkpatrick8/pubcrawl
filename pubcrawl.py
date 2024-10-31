@@ -82,6 +82,9 @@ def load_data():
         content = repo.get_contents(participants_file, ref=BRANCH_NAME)
         participants_df = pd.read_csv(io.StringIO(content.decoded_content.decode()))
         
+        # Ensure CompletedPubs is a string
+        participants_df['CompletedPubs'] = participants_df['CompletedPubs'].astype(str)
+
         # Load punishments
         content = repo.get_contents(punishments_file, ref=BRANCH_NAME)
         punishments_df = pd.read_csv(io.StringIO(content.decoded_content.decode()))
@@ -91,6 +94,7 @@ def load_data():
         st.sidebar.error(f"Error loading data: {e}")
         # Return empty DataFrames if files don't exist
         participants_df = pd.DataFrame(columns=['Name', 'CurrentPub', 'CompletedPubs', 'Points'])
+        participants_df['CompletedPubs'] = participants_df['CompletedPubs'].astype(str)  # Ensure it's a string
         punishments_df = pd.DataFrame(columns=['Time', 'Name', 'Pub', 'Punishment'])
         return participants_df, punishments_df
 
@@ -223,8 +227,11 @@ def mark_pub_complete(name):
     participant_idx = participants_df[participants_df['Name'] == name].index[0]
     
     current_pub = int(participants_df.loc[participant_idx, 'CurrentPub'])
-    completed_pubs = participants_df.loc[participant_idx, 'CompletedPubs'].split(',') if participants_df.loc[participant_idx, 'CompletedPubs'] else []
     
+    # Ensure CompletedPubs is treated as a string
+    completed_pubs = participants_df.loc[participant_idx, 'CompletedPubs']
+    completed_pubs = completed_pubs.split(',') if isinstance(completed_pubs, str) else []
+
     # Update completed pubs and points
     completed_pubs.append(PUBS_DATA['name'][current_pub])
     participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
