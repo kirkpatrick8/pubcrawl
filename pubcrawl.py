@@ -30,7 +30,7 @@ st.markdown("""
 
 # GitHub configuration
 GITHUB_TOKEN = st.secrets["github"]["GITHUB_TOKEN"]
-REPO_NAME = st.secrets["github"]["REPO_NAME"]
+REPO_NAME = "kirkpatrick8/pubcrawl"  # Your specific repo
 BRANCH_NAME = "main"
 
 # Initialize GitHub client
