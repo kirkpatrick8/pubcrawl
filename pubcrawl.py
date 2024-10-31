@@ -197,6 +197,41 @@ def show_leaderboard():
     leaderboard_df = pd.DataFrame(display_data)
     st.write(leaderboard_df)
 
+def show_map():
+    """Display a map with pub locations"""
+    # Create a base map
+    base_map = folium.Map(location=[54.589539, -5.934469], zoom_start=14)
+
+    # Add markers for each pub
+    for name, lat, lon in zip(PUBS_DATA['name'], PUBS_DATA['latitude'], PUBS_DATA['longitude']):
+        folium.Marker(
+            location=[lat, lon],
+            popup=name,
+            icon=folium.Icon(color="blue", icon="info-sign"),
+        ).add_to(base_map)
+
+    # Render the map in Streamlit
+    st_folium(base_map, width=700)
+
+# Define functions for Rules, Punishments, and Safety Tips
+def show_rules():
+    """Display the rules"""
+    st.markdown("### Rules")
+    for rule in PUBS_DATA['rules']:
+        st.write(f"- {rule}")
+
+def show_punishments():
+    """Display the punishments"""
+    st.markdown("### Punishments")
+    st.write("1. Example Punishment 1")
+    st.write("2. Example Punishment 2")
+
+def show_safety_tips():
+    """Display safety tips"""
+    st.markdown("### Safety Tips")
+    st.write("1. Stay hydrated.")
+    st.write("2. Have a buddy system.")
+
 # Main script logic
 if __name__ == "__main__":
     name_entry_modal()
