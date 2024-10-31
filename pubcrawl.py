@@ -3,16 +3,14 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 import random
-import time
 from datetime import datetime
-from github import Github
-from github import GithubException
+from github import Github, GithubException
 import io
 
-# Page config with custom CSS
+# Page configuration
 st.set_page_config(page_title="Belfast 12 Pubs of Christmas", page_icon="🍺", layout="wide")
 
-# Custom CSS
+# Custom CSS for styling
 st.markdown("""
     <style>
     .stProgress .st-bo { background-color: #ff4b4b; }
@@ -37,7 +35,7 @@ BRANCH_NAME = "main"
 g = Github(GITHUB_TOKEN)
 repo = g.get_repo(REPO_NAME)
 
-# Constants
+# Constants for pubs and rules
 PUBS_DATA = {
     'name': [
         "Lavery's", "The Points", "Sweet Afton", "Kelly's Cellars",
@@ -45,12 +43,14 @@ PUBS_DATA = {
         "The Harp Bar", "The Dirty Onion", "Thirsty Goat", "Ulster Sports Club"
     ],
     'latitude': [
-        54.589539, 54.591556, 54.595067, 54.599553, 54.600033, 54.601439,
-        54.601928, 54.601803, 54.602000, 54.601556, 54.601308, 54.600733
+        54.589539, 54.591556, 54.595067, 54.599553, 54.600033, 
+        54.601439, 54.601928, 54.601803, 54.602000, 54.601556, 
+        54.601308, 54.600733
     ],
     'longitude': [
-        -5.934469, -5.933333, -5.932894, -5.932236, -5.928497, -5.930294,
-        -5.928617, -5.927442, -5.927058, -5.926673, -5.926417, -5.925219
+        -5.934469, -5.933333, -5.932894, -5.932236, -5.928497, 
+        -5.930294, -5.928617, -5.927442, -5.927058, -5.926673, 
+        -5.926417, -5.925219
     ],
     'rules': [
         "Christmas Jumpers Required", "Last Names Only", "No Swearing Challenge",
@@ -242,7 +242,7 @@ def mark_pub_complete(name):
         }, ignore_index=True)
         
         print(f"Recording punishment: {punishment} for {name} at {PUBS_DATA['name'][current_pub]}")
-        
+
         save_data(participants_df, punishments_df)
         st.success(f"Marked {PUBS_DATA['name'][current_pub]} as complete and assigned punishment: {punishment}")
 
@@ -260,7 +260,7 @@ def show_map():
 
     st_folium(m)
 
-# Main Application
+# Main Application Logic
 name_entry_modal()
 
 if st.session_state.current_participant:
