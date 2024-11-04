@@ -12,7 +12,7 @@ import io
 # Page config
 st.set_page_config(page_title="Belfast 12 Pubs of Christmas", page_icon="🍺", layout="wide")
 
-# Custom CSS
+# Custom CSS for all components
 st.markdown("""
     <style>
     .stProgress .st-bo { background-color: #ff4b4b; }
@@ -25,6 +25,54 @@ st.markdown("""
         background: linear-gradient(45deg, #4CAF50, #45a049);
         color: white;
     }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .wheel-container {
+        width: 400px;
+        height: 400px;
+        margin: auto;
+        position: relative;
+    }
+    .wheel {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        position: relative;
+        overflow: hidden;
+        transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        transform-origin: center;
+    }
+    .wheel-section {
+        position: absolute;
+        width: 50%;
+        height: 50%;
+        transform-origin: 100% 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+        text-align: center;
+        padding: 10px;
+    }
+    .spinning {
+        animation: spin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+    }
+    .pointer {
+        position: absolute;
+        top: 50%;
+        right: -20px;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-top: 15px solid transparent;
+        border-bottom: 15px solid transparent;
+        border-left: 30px solid #FF4B4B;
+        z-index: 1;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -32,6 +80,7 @@ st.markdown("""
 GITHUB_TOKEN = st.secrets["Pubcrawl"]["GITHUB_TOKEN"]
 REPO_NAME = "kirkpatrick8/pubcrawl"
 BRANCH_NAME = "main"
+
 # Initialize GitHub client
 g = Github(GITHUB_TOKEN)
 repo = g.get_repo(REPO_NAME)
@@ -76,8 +125,13 @@ ACHIEVEMENTS = {
     'rule_breaker': {'name': 'Rule Breaker', 'desc': 'Get punished 3 times', 'points': 150}
 }
 
-# Load and save functions
-@st.cache_data(ttl=60)
+def auto_refresh():
+    """Helper function to refresh data"""
+    st.cache_data.clear()
+    time.sleep(0.1)  # Short delay to prevent too rapid refreshes
+    st.rerun()
+
+@st.cache_data(ttl=10)  # Cache for 10 seconds
 def load_data():
     """Load data from GitHub"""
     try:
@@ -147,131 +201,65 @@ def save_data(participants_df, punishments_df):
     except Exception as e:
         st.sidebar.error(f"Error saving data: {e}")
 
-def check_achievements(name, participants_df):
-    """Check and award achievements"""
-    participant = participants_df[participants_df['Name'] == name].iloc[0]
-    achievements = [] if pd.isna(participant['Achievements']) else participant['Achievements'].split(',')
-    completed_pubs = [] if pd.isna(participant['CompletedPubs']) else participant['CompletedPubs'].split(',')
-    completed_count = len(completed_pubs) if completed_pubs != [''] else 0
-    
-    # First pub achievement
-    if completed_count >= 1 and 'first_pub' not in achievements:
-        achievements.append('first_pub')
-        st.balloons()
-        st.success(f"🏆 Achievement Unlocked: {ACHIEVEMENTS['first_pub']['name']}!")
-    
-    # Halfway achievement
-    if completed_count >= 6 and 'halfway' not in achievements:
-        achievements.append('halfway')
-        st.balloons()
-        st.success(f"🏆 Achievement Unlocked: {ACHIEVEMENTS['halfway']['name']}!")
-    
-    # Finisher achievement
-    if completed_count == 12 and 'finisher' not in achievements:
-        achievements.append('finisher')
-        st.balloons()
-        st.success(f"🏆 Achievement Unlocked: {ACHIEVEMENTS['finisher']['name']}!")
-    
-    # Update achievements in DataFrame
-    participants_df.loc[participants_df['Name'] == name, 'Achievements'] = ','.join(achievements)
-    return participants_df
-
 def name_entry_modal():
     """Display name entry modal"""
     if 'current_participant' not in st.session_state:
         st.session_state.current_participant = None
         
     if st.session_state.current_participant is None:
-        st.markdown("### Welcome to the Belfast 12 Pubs of Christmas! 🎄")
-        name = st.text_input("Enter your name to begin:")
-        if name:
-            participants_df, punishments_df = load_data()
-            if name not in participants_df['Name'].values:
-                new_participant = pd.DataFrame([{
-                    'Name': name,
-                    'CurrentPub': 0,
-                    'CompletedPubs': '',
-                    'Points': 0,
-                    'Achievements': ''
-                }])
-                participants_df = pd.concat([participants_df, new_participant], ignore_index=True)
-                save_data(participants_df, punishments_df)
-            st.session_state.current_participant = name
-            st.rerun()
+        with st.container():
+            st.markdown("### Welcome to the Belfast 12 Pubs of Christmas! 🎄")
+            name = st.text_input("Enter your name to begin:")
+            if name:
+                participants_df, punishments_df = load_data()
+                if name not in participants_df['Name'].values:
+                    new_participant = pd.DataFrame([{
+                        'Name': name,
+                        'CurrentPub': 0,
+                        'CompletedPubs': '',
+                        'Points': 0,
+                        'Achievements': ''
+                    }])
+                    participants_df = pd.concat([participants_df, new_participant], ignore_index=True)
+                    save_data(participants_df, punishments_df)
+                st.session_state.current_participant = name
+                auto_refresh()
 
-def show_progress(name):
-    """Show progress for current participant"""
-    participants_df, _ = load_data()
-    
-    if name not in participants_df['Name'].values:
-        new_participant = pd.DataFrame([{
-            'Name': name,
-            'CurrentPub': 0,
-            'CompletedPubs': '',
-            'Points': 0,
-            'Achievements': ''
-        }])
-        participants_df = pd.concat([participants_df, new_participant], ignore_index=True)
-        save_data(participants_df, load_data()[1])
-    
+def check_achievements(name, participants_df):
+    """Check and award achievements"""
     participant = participants_df[participants_df['Name'] == name].iloc[0]
-    
-    st.header(f"Progress Tracker for {name}")
-    
-    # Progress calculations
+    achievements = [] if pd.isna(participant['Achievements']) else participant['Achievements'].split(',')
     completed_pubs = [] if pd.isna(participant['CompletedPubs']) else participant['CompletedPubs'].split(',')
-    if completed_pubs == ['']:
-        completed_pubs = []
-    progress = len(completed_pubs)
-    current_pub = int(participant['CurrentPub'])
+    completed_count = len(completed_pubs) if completed_pubs != [''] else 0
+    points_added = 0
     
-    # Display progress
-    st.progress(progress/12)
+    # First pub achievement
+    if completed_count >= 1 and 'first_pub' not in achievements:
+        achievements.append('first_pub')
+        points_added += ACHIEVEMENTS['first_pub']['points']
+        st.balloons()
+        st.success(f"🏆 Achievement Unlocked: {ACHIEVEMENTS['first_pub']['name']}!")
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Pubs Completed", f"{progress}/12")
-    with col2:
-        st.metric("Pubs Remaining", f"{12-progress}")
-    with col3:
-        st.metric("Points", int(participant['Points']))
+    # Halfway achievement
+    if completed_count >= 6 and 'halfway' not in achievements:
+        achievements.append('halfway')
+        points_added += ACHIEVEMENTS['halfway']['points']
+        st.balloons()
+        st.success(f"🏆 Achievement Unlocked: {ACHIEVEMENTS['halfway']['name']}!")
     
-    # Current pub information
-    if current_pub < 12:
-        current_pub_name = PUBS_DATA['name'][current_pub]
-        current_rule = PUBS_DATA['rules'][current_pub]
-        
-        st.subheader(f"Current Pub: {current_pub_name}")
-        st.info(f"Rule: {current_rule}")
-        
-        if st.button("Mark Current Pub as Complete", type="primary"):
-            mark_pub_complete(name)
-    else:
-        st.success("🎉 Congratulations! You've completed the Belfast 12 Pubs of Christmas! 🎉")
-
-def mark_pub_complete(name):
-    """Mark current pub as completed"""
-    participants_df, punishments_df = load_data()
-    participant_idx = participants_df[participants_df['Name'] == name].index[0]
+    # Finisher achievement
+    if completed_count == 12 and 'finisher' not in achievements:
+        achievements.append('finisher')
+        points_added += ACHIEVEMENTS['finisher']['points']
+        st.balloons()
+        st.success(f"🏆 Achievement Unlocked: {ACHIEVEMENTS['finisher']['name']}!")
     
-    current_pub = int(participants_df.loc[participant_idx, 'CurrentPub'])
-    completed_pubs = [] if pd.isna(participants_df.loc[participant_idx, 'CompletedPubs']) else \
-                    participants_df.loc[participant_idx, 'CompletedPubs'].split(',')
+    # Update achievements and points in DataFrame
+    participants_df.loc[participants_df['Name'] == name, 'Achievements'] = ','.join(achievements)
+    if points_added > 0:
+        participants_df.loc[participants_df['Name'] == name, 'Points'] += points_added
     
-    if completed_pubs == ['']:
-        completed_pubs = []
-        
-    if current_pub < 12:
-        completed_pubs.append(PUBS_DATA['name'][current_pub])
-        participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
-        participants_df.loc[participant_idx, 'CurrentPub'] = current_pub + 1
-        participants_df.loc[participant_idx, 'Points'] += 100
-        
-        # Check achievements
-        participants_df = check_achievements(name, participants_df)
-        
-        save_data(participants_df, punishments_df)
-        st.rerun()
+    return participants_df
 
 def show_map():
     """Display interactive map"""
@@ -283,7 +271,11 @@ def show_map():
     if completed_pubs == ['']:
         completed_pubs = []
     
-    m = folium.Map(location=[54.595733, -5.930294], zoom_start=15, tiles="CartoDB positron")
+    m = folium.Map(
+        location=[54.595733, -5.930294],
+        zoom_start=15,
+        tiles="CartoDB positron"
+    )
     
     # Add markers and route
     for i, (name, lat, lon) in enumerate(zip(
@@ -341,60 +333,6 @@ def show_punishment_wheel():
     """Display spinning punishment wheel"""
     st.header("😈 Rule Breaker's Punishment Wheel")
     
-    # Add CSS for spinning wheel
-    st.markdown("""
-        <style>
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .wheel-container {
-            width: 400px;
-            height: 400px;
-            margin: auto;
-            position: relative;
-        }
-        .wheel {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            position: relative;
-            overflow: hidden;
-            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-            transform-origin: center;
-        }
-        .wheel-section {
-            position: absolute;
-            width: 50%;
-            height: 50%;
-            transform-origin: 100% 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            color: white;
-            text-align: center;
-            padding: 10px;
-        }
-        .spinning {
-            animation: spin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-        }
-        .pointer {
-            position: absolute;
-            top: 50%;
-            right: -20px;
-            transform: translateY(-50%);
-            width: 0;
-            height: 0;
-            border-top: 15px solid transparent;
-            border-bottom: 15px solid transparent;
-            border-left: 30px solid #FF4B4B;
-            z-index: 1;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
     if st.button("Spin the Wheel", type="primary"):
         participants_df, punishments_df = load_data()
         participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
@@ -424,7 +362,6 @@ def show_punishment_wheel():
         with st.spinner(""):
             time.sleep(4)
         
-        # Select and display punishment
         punishment = random.choice(PUNISHMENTS)
         
         # Record punishment
@@ -436,23 +373,27 @@ def show_punishment_wheel():
         }])
         punishments_df = pd.concat([punishments_df, new_punishment], ignore_index=True)
         
-        # Update achievements and save
+        # Check rule breaker achievement
         achievements = [] if pd.isna(participant['Achievements']) else participant['Achievements'].split(',')
         if len(punishments_df[punishments_df['Name'] == st.session_state.current_participant]) >= 3:
             if 'rule_breaker' not in achievements:
                 achievements.append('rule_breaker')
                 participants_df.loc[participants_df['Name'] == st.session_state.current_participant, 'Achievements'] = ','.join(achievements)
+                participants_df.loc[participants_df['Name'] == st.session_state.current_participant, 'Points'] += ACHIEVEMENTS['rule_breaker']['points']
                 st.balloons()
                 st.success(f"🏆 Achievement Unlocked: {ACHIEVEMENTS['rule_breaker']['name']}!")
         
         save_data(participants_df, punishments_df)
-        
         st.snow()
         st.success(f"Your punishment is: {punishment}")
+        
+        # Short delay before refresh
+        time.sleep(1)
         auto_refresh()
+
 def show_leaderboard():
     """Display leaderboard"""
-    st.header("🏆 Leaderboard")
+    st.header("🏆 Group Progress")
     
     participants_df, punishments_df = load_data()
     
@@ -463,9 +404,12 @@ def show_leaderboard():
             completed_count = len(row['CompletedPubs'].split(',')) if not pd.isna(row['CompletedPubs']) and row['CompletedPubs'] != '' else 0
             achievements_count = len(row['Achievements'].split(',')) if not pd.isna(row['Achievements']) and row['Achievements'] != '' else 0
             
+            current_pub = PUBS_DATA['name'][int(row['CurrentPub'])] if int(row['CurrentPub']) < 12 else 'Finished!'
+            
             display_data.append({
                 'Name': row['Name'],
                 'Pubs Completed': completed_count,
+                'Current Pub': current_pub,
                 'Points': int(row['Points']),
                 'Achievements': achievements_count
             })
@@ -476,8 +420,59 @@ def show_leaderboard():
     
     # Show punishment history
     if not punishments_df.empty:
-        st.subheader("😈 Punishment History")
-        st.dataframe(punishments_df, use_container_width=True)
+        st.subheader("😈 Recent Punishments")
+        recent_punishments = punishments_df.tail(5).sort_values('Time', ascending=False)
+        st.dataframe(recent_punishments, use_container_width=True)
+
+def show_progress(name):
+    """Show progress for current participant"""
+    participants_df, _ = load_data()
+    participant = participants_df[participants_df['Name'] == name].iloc[0]
+    
+    st.header(f"Progress Tracker for {name}")
+    
+    # Progress calculations
+    completed_pubs = [] if pd.isna(participant['CompletedPubs']) else participant['CompletedPubs'].split(',')
+    if completed_pubs == ['']:
+        completed_pubs = []
+    progress = len(completed_pubs)
+    current_pub = int(participant['CurrentPub'])
+    
+    # Display progress
+    st.progress(progress/12)
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Pubs Completed", f"{progress}/12")
+    with col2:
+        st.metric("Pubs Remaining", f"{12-progress}")
+    with col3:
+        st.metric("Points", int(participant['Points']))
+    
+    # Current pub information
+    if current_pub < 12:
+        current_pub_name = PUBS_DATA['name'][current_pub]
+        current_rule = PUBS_DATA['rules'][current_pub]
+        
+        st.subheader(f"Current Pub: {current_pub_name}")
+        st.info(f"Rule: {current_rule}")
+        
+        if st.button("Mark Current Pub as Complete", type="primary"):
+            # Update completed pubs
+            completed_pubs.append(current_pub_name)
+            participant_idx = participants_df[participants_df['Name'] == name].index[0]
+            participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
+            participants_df.loc[participant_idx, 'CurrentPub'] = current_pub + 1
+            participants_df.loc[participant_idx, 'Points'] += 100
+            
+            # Check achievements
+            participants_df = check_achievements(name, participants_df)
+            
+            # Save and refresh
+            save_data(participants_df, load_data()[1])
+            auto_refresh()
+    else:
+        st.success("🎉 Congratulations! You've completed the Belfast 12 Pubs of Christmas! 🎉")
 
 def show_achievements(name):
     """Display achievements for a participant"""
@@ -499,6 +494,18 @@ def show_achievements(name):
             """, unsafe_allow_html=True)
     else:
         st.info("Complete challenges to earn achievements!")
+        
+    # Show all available achievements
+    st.subheader("🎯 Available Achievements")
+    for ach_id, ach in ACHIEVEMENTS.items():
+        if ach_id not in achievements:
+            st.markdown(f"""
+                <div style='padding: 10px; margin: 5px; border-radius: 5px; background: #f0f2f6;'>
+                    <h3>{ach['name']}</h3>
+                    <p>{ach['desc']}</p>
+                    <small>+{ach['points']} points</small>
+                </div>
+            """, unsafe_allow_html=True)
 
 def main():
     st.title("🎄 Belfast 12 Pubs of Christmas 🍺")
@@ -509,8 +516,7 @@ def main():
     if st.session_state.current_participant:
         # Add refresh button in sidebar
         if st.sidebar.button("Refresh Data"):
-            st.cache_data.clear()
-            st.rerun()
+            auto_refresh()
         
         # Main navigation
         tabs = st.tabs([
