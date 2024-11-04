@@ -419,46 +419,37 @@ def show_punishment_wheel():
     """Display simple spinning wheel"""
     st.header("😈 Rule Breaker's Wheel")
     
-    if st.button("Spin the Wheel", type="primary"):
-        # Colors for the wheel sections
-        colors = ['#FF4B4B', '#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#FF9800',
-                 '#E91E63', '#00BCD4', '#8BC34A', '#FF5722', '#3F51B5', '#009688']
-        
-        # Create wheel HTML
-        wheel_html = """
-            <div class="wheel-container">
-                <div class="wheel-pointer"></div>
-                <div class="wheel spinning">
-        """
-        
-        # Add colored sections
-        for i, color in enumerate(colors):
-            angle = i * 30  # 360 degrees / 12 sections = 30 degrees per section
-            wheel_html += f"""
-                <div class="wheel-section" style="
-                    --color: {color};
-                    transform: rotate({angle}deg);">
-                </div>
-            """
-        
-        wheel_html += """
-                    <div class="wheel-center"></div>
-                </div>
+    wheel_html = """
+        <div class="wheel-container">
+            <div class="wheel-pointer"></div>
+            <div class="wheel">
+                <div class="wheel-section" style="--color: #FF4B4B; transform: rotate(0deg);"></div>
+                <div class="wheel-section" style="--color: #4CAF50; transform: rotate(30deg);"></div>
+                <div class="wheel-section" style="--color: #2196F3; transform: rotate(60deg);"></div>
+                <div class="wheel-section" style="--color: #FFC107; transform: rotate(90deg);"></div>
+                <div class="wheel-section" style="--color: #9C27B0; transform: rotate(120deg);"></div>
+                <div class="wheel-section" style="--color: #FF9800; transform: rotate(150deg);"></div>
+                <div class="wheel-section" style="--color: #E91E63; transform: rotate(180deg);"></div>
+                <div class="wheel-section" style="--color: #00BCD4; transform: rotate(210deg);"></div>
+                <div class="wheel-section" style="--color: #8BC34A; transform: rotate(240deg);"></div>
+                <div class="wheel-section" style="--color: #FF5722; transform: rotate(270deg);"></div>
+                <div class="wheel-section" style="--color: #3F51B5; transform: rotate(300deg);"></div>
+                <div class="wheel-section" style="--color: #009688; transform: rotate(330deg);"></div>
+                <div class="wheel-center"></div>
             </div>
-        """
-        
-        st.markdown(wheel_html, unsafe_allow_html=True)
+        </div>
+    """
+
+    if st.button("Spin the Wheel", type="primary"):
+        # Show spinning wheel
+        st.markdown(wheel_html.replace('wheel">', 'wheel spinning">'), unsafe_allow_html=True)
         
         # Wait for animation
         with st.spinner(""):
             time.sleep(4)
         
-        # Select and display punishment
+        # Save and display punishment
         punishment = random.choice(PUNISHMENTS)
-        st.snow()
-        st.success(f"Your punishment is: {punishment}")
-        
-        # Save punishment to history
         participants_df, punishments_df = load_data()
         participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
         current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
@@ -469,34 +460,14 @@ def show_punishment_wheel():
             'Pub': current_pub,
             'Punishment': punishment
         }])
+        
         punishments_df = pd.concat([punishments_df, new_punishment], ignore_index=True)
         save_data(participants_df, punishments_df)
+        
+        st.snow()
+        st.success(f"Your punishment is: {punishment}")
     else:
         # Show static wheel
-        colors = ['#FF4B4B', '#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#FF9800',
-                 '#E91E63', '#00BCD4', '#8BC34A', '#FF5722', '#3F51B5', '#009688']
-        
-        wheel_html = """
-            <div class="wheel-container">
-                <div class="wheel-pointer"></div>
-                <div class="wheel">
-        """
-        
-        for i, color in enumerate(colors):
-            angle = i * 30
-            wheel_html += f"""
-                <div class="wheel-section" style="
-                    --color: {color};
-                    transform: rotate({angle}deg);">
-                </div>
-            """
-        
-        wheel_html += """
-                    <div class="wheel-center"></div>
-                </div>
-            </div>
-        """
-        
         st.markdown(wheel_html, unsafe_allow_html=True)
 
 def show_progress(name):
