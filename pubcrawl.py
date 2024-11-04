@@ -333,16 +333,100 @@ def show_punishment_wheel():
     """Display spinning punishment wheel"""
     st.header("😈 Rule Breaker's Punishment Wheel")
     
+    # Add improved CSS for a more visual wheel
+    st.markdown("""
+        <style>
+        .wheel-container {
+            width: 400px;
+            height: 400px;
+            position: relative;
+            margin: 40px auto;
+        }
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 10px solid #333;
+            position: relative;
+            overflow: hidden;
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+        .wheel-section {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: 100% 100%;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            font-size: 14px;
+            padding: 20px 40px;
+            box-sizing: border-box;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            text-align: center;
+            /* Add gradient overlay for better text visibility */
+            background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.2));
+        }
+        .spinning {
+            animation: spin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+        .pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            background: #FF4B4B;
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+            z-index: 2;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(calc(360deg * 5 + var(--end-spin))); }
+        }
+        .wheel-center {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: #333;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     if st.button("Spin the Wheel", type="primary"):
         participants_df, punishments_df = load_data()
         participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
         current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
         
-        # Create wheel sections
-        wheel_html = """<div class="wheel-container">"""
+        # Create wheel sections with bright colors
+        wheel_html = """<div class="wheel-container"><div class="pointer"></div>"""
         wheel_html += """<div class="wheel spinning">"""
         
-        colors = ['#FF4B4B', '#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#FF9800']
+        # Bright, festive colors for the wheel
+        colors = [
+            '#FF4B4B',  # Red
+            '#4CAF50',  # Green
+            '#2196F3',  # Blue
+            '#FFC107',  # Yellow
+            '#9C27B0',  # Purple
+            '#FF9800',  # Orange
+            '#E91E63',  # Pink
+            '#00BCD4',  # Cyan
+            '#8BC34A',  # Light Green
+            '#FF5722',  # Deep Orange
+            '#3F51B5',  # Indigo
+            '#009688'   # Teal
+        ]
+        
         num_sections = len(PUNISHMENTS)
         rotation = 360 / num_sections
         
@@ -350,18 +434,22 @@ def show_punishment_wheel():
             color = colors[i % len(colors)]
             transform = f"rotate({i * rotation}deg)"
             wheel_html += f"""
-                <div class="wheel-section" style="background: {color}; transform: {transform}">
+                <div class="wheel-section" 
+                     style="background: {color}; transform: {transform}">
                     {punishment}
                 </div>
             """
         
-        wheel_html += """</div><div class="pointer"></div></div>"""
+        wheel_html += """</div><div class="wheel-center"></div></div>"""
+        
+        # Display the wheel
         st.markdown(wheel_html, unsafe_allow_html=True)
         
         # Wait for wheel animation
         with st.spinner(""):
             time.sleep(4)
         
+        # Select and display punishment
         punishment = random.choice(PUNISHMENTS)
         
         # Record punishment
@@ -384,12 +472,36 @@ def show_punishment_wheel():
                 st.success(f"🏆 Achievement Unlocked: {ACHIEVEMENTS['rule_breaker']['name']}!")
         
         save_data(participants_df, punishments_df)
+        
         st.snow()
         st.success(f"Your punishment is: {punishment}")
-        
-        # Short delay before refresh
         time.sleep(1)
         auto_refresh()
+    else:
+        # Show static wheel when not spinning
+        wheel_html = """<div class="wheel-container"><div class="pointer"></div>"""
+        wheel_html += """<div class="wheel">"""
+        
+        colors = [
+            '#FF4B4B', '#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#FF9800',
+            '#E91E63', '#00BCD4', '#8BC34A', '#FF5722', '#3F51B5', '#009688'
+        ]
+        
+        num_sections = len(PUNISHMENTS)
+        rotation = 360 / num_sections
+        
+        for i, punishment in enumerate(PUNISHMENTS):
+            color = colors[i % len(colors)]
+            transform = f"rotate({i * rotation}deg)"
+            wheel_html += f"""
+                <div class="wheel-section" 
+                     style="background: {color}; transform: {transform}">
+                    {punishment}
+                </div>
+            """
+        
+        wheel_html += """</div><div class="wheel-center"></div></div>"""
+        st.markdown(wheel_html, unsafe_allow_html=True)
 
 def show_leaderboard():
     """Display leaderboard"""
