@@ -283,8 +283,9 @@ def show_map():
     if completed_pubs == ['']:
         completed_pubs = []
     
-    m = folium.Map(location=[54.595733, -5.930294], zoom_start=15)
+    m = folium.Map(location=[54.595733, -5.930294], zoom_start=15, tiles="CartoDB positron")
     
+    # Add markers and route
     for i, (name, lat, lon) in enumerate(zip(
         PUBS_DATA['name'],
         PUBS_DATA['latitude'],
@@ -296,46 +297,134 @@ def show_map():
             icon = 'check'
         elif i == int(participant['CurrentPub']):
             color = 'orange'
-            icon = 'info-sign'
+            icon = 'beer'
         else:
             color = 'red'
-            icon = 'beer'
-        
+            icon = 'info'
+            
+        # Create popup content
         popup_text = f"""
             <div style='width:200px'>
                 <h4>{i+1}. {name}</h4>
                 <b>Rule:</b> {PUBS_DATA['rules'][i]}<br>
-                <b>Status:</b> {'Completed' if name in completed_pubs else 'Current' if i == int(participant['CurrentPub']) else 'Pending'}
+                <b>Status:</b> {'✅ Completed' if name in completed_pubs else 
+                              '🎯 Current' if i == int(participant['CurrentPub']) else 
+                              '⏳ Pending'}
             </div>
         """
         
+        # Add marker
         folium.Marker(
             [lat, lon],
-            popup=folium.Popup(popup_text, max_width=300),
+            popup=popup_text,
+            tooltip=f"{i+1}. {name}",
             icon=folium.Icon(color=color, icon=icon, prefix='fa')
         ).add_to(m)
         
+        # Connect pubs with line
         if i > 0:
-            points = [
-                [PUBS_DATA['latitude'][i-1], PUBS_DATA['longitude'][i-1]],
-                [lat, lon]
-            ]
-            folium.PolyLine(points, weight=2, color='blue', opacity=0.8).add_to(m)
+            folium.PolyLine(
+                locations=[
+                    [PUBS_DATA['latitude'][i-1], PUBS_DATA['longitude'][i-1]],
+                    [lat, lon]
+                ],
+                weight=3,
+                color='#FF4B4B',
+                opacity=0.8,
+                dash_array='10'
+            ).add_to(m)
     
-    st_folium(m)
+    # Display map
+    st_folium(m, height=400, width=700)
 
 def show_punishment_wheel():
-    """Display punishment wheel"""
+    """Display spinning punishment wheel"""
     st.header("😈 Rule Breaker's Punishment Wheel")
+    
+    # Add CSS for spinning wheel
+    st.markdown("""
+        <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .wheel-container {
+            width: 400px;
+            height: 400px;
+            margin: auto;
+            position: relative;
+        }
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            transform-origin: center;
+        }
+        .wheel-section {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: 100% 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            padding: 10px;
+        }
+        .spinning {
+            animation: spin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+        .pointer {
+            position: absolute;
+            top: 50%;
+            right: -20px;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-top: 15px solid transparent;
+            border-bottom: 15px solid transparent;
+            border-left: 30px solid #FF4B4B;
+            z-index: 1;
+        }
+        </style>
+    """, unsafe_allow_html=True)
     
     if st.button("Spin the Wheel", type="primary"):
         participants_df, punishments_df = load_data()
         participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
         current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
         
-        with st.spinner("The wheel is spinning..."):
-            time.sleep(1.5)
+        # Create wheel sections
+        wheel_html = """<div class="wheel-container">"""
+        wheel_html += """<div class="wheel spinning">"""
         
+        colors = ['#FF4B4B', '#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#FF9800']
+        num_sections = len(PUNISHMENTS)
+        rotation = 360 / num_sections
+        
+        for i, punishment in enumerate(PUNISHMENTS):
+            color = colors[i % len(colors)]
+            transform = f"rotate({i * rotation}deg)"
+            wheel_html += f"""
+                <div class="wheel-section" style="background: {color}; transform: {transform}">
+                    {punishment}
+                </div>
+            """
+        
+        wheel_html += """</div><div class="pointer"></div></div>"""
+        st.markdown(wheel_html, unsafe_allow_html=True)
+        
+        # Wait for wheel animation
+        with st.spinner(""):
+            time.sleep(4)
+        
+        # Select and display punishment
         punishment = random.choice(PUNISHMENTS)
         
         # Record punishment
@@ -347,9 +436,9 @@ def show_punishment_wheel():
         }])
         punishments_df = pd.concat([punishments_df, new_punishment], ignore_index=True)
         
-        # Check rule breaker achievement
+        # Update achievements and save
+        achievements = [] if pd.isna(participant['Achievements']) else participant['Achievements'].split(',')
         if len(punishments_df[punishments_df['Name'] == st.session_state.current_participant]) >= 3:
-            achievements = [] if pd.isna(participant['Achievements']) else participant['Achievements'].split(',')
             if 'rule_breaker' not in achievements:
                 achievements.append('rule_breaker')
                 participants_df.loc[participants_df['Name'] == st.session_state.current_participant, 'Achievements'] = ','.join(achievements)
@@ -360,7 +449,7 @@ def show_punishment_wheel():
         
         st.snow()
         st.success(f"Your punishment is: {punishment}")
-
+        auto_refresh()
 def show_leaderboard():
     """Display leaderboard"""
     st.header("🏆 Leaderboard")
