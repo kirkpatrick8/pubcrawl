@@ -15,11 +15,10 @@ st.set_page_config(page_title="Belfast 12 Pubs of Christmas", page_icon="🍺", 
 # CSS for components
 st.markdown("""
     <style>
+    /* Base styles */
     .stProgress .st-bo { background-color: #ff4b4b; }
     .stProgress .st-bp { background-color: #28a745; }
     .pub-timer { font-size: 24px; font-weight: bold; color: #ff4b4b; }
-    
-    /* Achievement styles */
     .achievement {
         padding: 10px;
         margin: 5px;
@@ -36,56 +35,166 @@ st.markdown("""
         opacity: 0.7;
         margin-bottom: 10px;
     }
-    
-    /* Wheel styles */
+
+    /* Prize Wheel Styles */
     .wheel-container {
-        width: 300px;
-        height: 300px;
-        margin: 20px auto;
+        width: 400px;
+        height: 400px;
+        margin: 50px auto;
         position: relative;
+        perspective: 1000px;
     }
+
     .wheel {
         width: 100%;
         height: 100%;
         border-radius: 50%;
         position: relative;
-        border: 10px solid #333;
-        background: #fff;
-        overflow: hidden;
-        box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        border: 15px solid #FFD700;  /* Gold border */
+        background: #ffffff;
+        box-shadow: 
+            0 0 0 15px #333,         /* Outer ring */
+            0 0 25px rgba(0,0,0,0.5);/* Shadow effect */
+        transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        transform-origin: center;
+        transform-style: preserve-3d;
     }
+
     .wheel-section {
         position: absolute;
+        top: 0;
+        right: 50%;
         width: 50%;
         height: 50%;
         transform-origin: 100% 100%;
-        background: #fff;
-        border: 1px solid #ccc;
-        box-sizing: border-box;
+        background: conic-gradient(from var(--angle), var(--start-color), var(--end-color));
+        clip-path: polygon(100% 50%, 100% 100%, 0 100%, 0 50%);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 12px;
-        padding: 10px;
-        text-align: center;
+        font-size: 14px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 
+            -1px -1px 0 #000,
+            1px -1px 0 #000,
+            -1px 1px 0 #000,
+            1px 1px 0 #000;
     }
+
+    .wheel.spinning {
+        animation: spin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+    }
+
     @keyframes spin {
         0% { transform: rotate(0deg); }
-        100% { transform: rotate(3600deg); }
+        100% { transform: rotate(calc(360deg * 8 + var(--random-stop, 0deg))); }
     }
-    .wheel.spinning {
-        animation: spin 5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-    }
+
     .wheel-pointer {
         position: absolute;
-        top: -20px;
+        top: -40px;
         left: 50%;
         transform: translateX(-50%);
         width: 40px;
-        height: 40px;
-        background: #FF4B4B;
+        height: 60px;
+        background: linear-gradient(to bottom, #FF0000, #CC0000);
         clip-path: polygon(50% 100%, 0 0, 100% 0);
-        z-index: 2;
+        z-index: 10;
+        box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+
+    .wheel-pointer::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 10px;
+        height: 10px;
+        background: #FFD700;
+        border-radius: 50%;
+    }
+
+    .wheel-center {
+        position: absolute;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(145deg, #FFD700, #FFA500);
+        border: 8px solid #333;
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 5;
+        box-shadow: 
+            inset 0 0 15px rgba(0,0,0,0.3),
+            0 0 10px rgba(0,0,0,0.3);
+    }
+
+    .wheel-text {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: 
+            translateX(-50%) 
+            translateY(-50%) 
+            rotate(calc(var(--rotate-angle) * -1deg));
+        width: 120px;
+        text-align: center;
+        padding: 5px;
+        font-size: 12px;
+        white-space: nowrap;
+        background: rgba(0,0,0,0.1);
+        border-radius: 15px;
+        backdrop-filter: blur(2px);
+    }
+
+    /* Metallic effects */
+    .wheel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 50%;
+        background: linear-gradient(
+            45deg,
+            rgba(255,255,255,0.1) 0%,
+            rgba(255,255,255,0.5) 50%,
+            rgba(255,255,255,0.1) 100%
+        );
+        pointer-events: none;
+    }
+
+    /* Animation effects */
+    @keyframes glow {
+        0% { box-shadow: 0 0 5px #FFD700; }
+        50% { box-shadow: 0 0 20px #FFD700; }
+        100% { box-shadow: 0 0 5px #FFD700; }
+    }
+
+    .wheel-center:hover {
+        animation: glow 2s infinite;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+        .wheel-container {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .wheel-text {
+            font-size: 10px;
+            width: 100px;
+        }
+        
+        .wheel-center {
+            width: 40px;
+            height: 40px;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -466,10 +575,10 @@ def show_map():
         st.error("Error displaying map. Please refresh the page.")
 
 def show_punishment_wheel():
-    """Display punishment wheel"""
+    """Display spinning punishment wheel"""
     st.header("😈 Rule Breaker's Punishment Wheel")
     
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([3, 1])
     
     with col1:
         if st.button("Spin the Wheel", type="primary"):
@@ -477,10 +586,19 @@ def show_punishment_wheel():
             participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
             current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
             
+            # Vibrant colors for the wheel
+            colors = [
+                ['#FF4B4B', '#FF6B6B'],  # Red
+                ['#4CAF50', '#6FBF73'],  # Green
+                ['#2196F3', '#42A5F5'],  # Blue
+                ['#FFC107', '#FFD54F'],  # Yellow
+                ['#9C27B0', '#BA68C8'],  # Purple
+                ['#FF9800', '#FFB74D']   # Orange
+            ]
+            
             # Create wheel
-            colors = ['#FF4B4B', '#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#FF9800']
             num_sections = len(PUNISHMENTS)
-            rotation = 360 / num_sections
+            section_angle = 360 / num_sections
             
             wheel_html = """
                 <div class="wheel-container">
@@ -488,23 +606,35 @@ def show_punishment_wheel():
                     <div class="wheel spinning">
             """
             
-            for i, (punishment, color) in enumerate(zip(PUNISHMENTS, colors * (num_sections // len(colors) + 1))):
+            for i, punishment in enumerate(PUNISHMENTS):
+                color_pair = colors[i % len(colors)]
+                angle = i * section_angle
+                
                 wheel_html += f"""
                     <div class="wheel-section" style="
-                        background: {color};
-                        transform: rotate({i * rotation}deg)">
-                        {punishment}
+                        --angle: {angle}deg;
+                        --start-color: {color_pair[0]};
+                        --end-color: {color_pair[1]};
+                        transform: rotate({angle}deg);">
+                        <div class="wheel-text" style="--rotate-angle: {angle}deg">
+                            {punishment}
+                        </div>
                     </div>
                 """
             
-            wheel_html += "</div></div>"
+            wheel_html += """
+                    <div class="wheel-center"></div>
+                </div>
+            </div>
+            """
+            
             st.markdown(wheel_html, unsafe_allow_html=True)
             
-            # Wait for animation
+            # Wait for wheel animation
             with st.spinner(""):
                 time.sleep(4)
             
-            # Select and record punishment
+            # Select punishment and save
             punishment = random.choice(PUNISHMENTS)
             new_punishment = pd.DataFrame([{
                 'Time': datetime.now().strftime('%H:%M:%S'),
@@ -512,20 +642,27 @@ def show_punishment_wheel():
                 'Pub': current_pub,
                 'Punishment': punishment
             }])
+            
             punishments_df = pd.concat([punishments_df, new_punishment], ignore_index=True)
-            
-            # Update achievements
             participants_df = check_achievements(st.session_state.current_participant, participants_df, punishments_df)
-            
             save_data(participants_df, punishments_df)
             
             st.snow()
             st.success(f"Your punishment is: {punishment}")
+        
         else:
             # Show static wheel
-            colors = ['#FF4B4B', '#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#FF9800']
+            colors = [
+                ['#FF4B4B', '#FF6B6B'],
+                ['#4CAF50', '#6FBF73'],
+                ['#2196F3', '#42A5F5'],
+                ['#FFC107', '#FFD54F'],
+                ['#9C27B0', '#BA68C8'],
+                ['#FF9800', '#FFB74D']
+            ]
+            
             num_sections = len(PUNISHMENTS)
-            rotation = 360 / num_sections
+            section_angle = 360 / num_sections
             
             wheel_html = """
                 <div class="wheel-container">
@@ -533,16 +670,28 @@ def show_punishment_wheel():
                     <div class="wheel">
             """
             
-            for i, (punishment, color) in enumerate(zip(PUNISHMENTS, colors * (num_sections // len(colors) + 1))):
+            for i, punishment in enumerate(PUNISHMENTS):
+                color_pair = colors[i % len(colors)]
+                angle = i * section_angle
+                
                 wheel_html += f"""
                     <div class="wheel-section" style="
-                        background: {color};
-                        transform: rotate({i * rotation}deg)">
-                        {punishment}
+                        --angle: {angle}deg;
+                        --start-color: {color_pair[0]};
+                        --end-color: {color_pair[1]};
+                        transform: rotate({angle}deg);">
+                        <div class="wheel-text" style="--rotate-angle: {angle}deg">
+                            {punishment}
+                        </div>
                     </div>
                 """
             
-            wheel_html += "</div></div>"
+            wheel_html += """
+                    <div class="wheel-center"></div>
+                </div>
+            </div>
+            """
+            
             st.markdown(wheel_html, unsafe_allow_html=True)
     
     with col2:
