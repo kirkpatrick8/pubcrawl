@@ -332,6 +332,68 @@ def auto_refresh():
     st.cache_data.clear()
     time.sleep(0.3)
     st.rerun()
+
+def show_progress(name):
+    """Show progress for current participant"""
+    participants_df, _ = load_data()
+    participant = participants_df[participants_df['Name'] == name].iloc[0]
+    
+    st.header(f"Progress Tracker for {name}")
+    
+    # Progress calculations
+    completed_pubs = [] if pd.isna(participant['CompletedPubs']) else participant['CompletedPubs'].split(',')
+    if completed_pubs == ['']:
+        completed_pubs = []
+    
+    progress = len(completed_pubs)
+    current_pub = int(participant['CurrentPub'])
+    
+    # Display progress
+    st.progress(progress/12)
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Pubs Completed", f"{progress}/12")
+    with col2:
+        st.metric("Pubs Remaining", f"{12-progress}")
+    with col3:
+        st.metric("Points", int(participant['Points']))
+    
+    # Current pub information
+    if current_pub < 12:
+        current_pub_name = PUBS_DATA['name'][current_pub]
+        current_rule = PUBS_DATA['rules'][current_pub]
+        
+        st.subheader(f"Current Pub: {current_pub_name}")
+        st.info(f"Rule: {current_rule}")
+        
+        if st.button("Mark Current Pub as Complete", type="primary"):
+            # Update completed pubs
+            completed_pubs.append(current_pub_name)
+            participant_idx = participants_df[participants_df['Name'] == name].index[0]
+            
+            # Update participant data
+            participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
+            participants_df.loc[participant_idx, 'CurrentPub'] = current_pub + 1
+            participants_df.loc[participant_idx, 'Points'] += 100
+            
+            # Check achievements
+            participants_df = check_achievements(name, participants_df)
+            
+            # Save and refresh
+            save_data(participants_df, load_data()[1])
+            auto_refresh()
+    else:
+        st.success("🎉 Congratulations! You've completed the Belfast 12 Pubs of Christmas! 🎉")
+        
+        # Show completion time if available
+        if 'StartTime' in participant:
+            start_time = datetime.fromisoformat(participant['StartTime'])
+            completion_time = datetime.now()
+            duration = completion_time - start_time
+            hours = duration.total_seconds() // 3600
+            minutes = (duration.total_seconds() % 3600) // 60
+            st.info(f"Total Time: {int(hours)} hours and {int(minutes)} minutes")
 def show_map():
     """Display interactive map"""
     st.header("🗺️ Pub Route Map")
