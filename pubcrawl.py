@@ -8,7 +8,6 @@ from datetime import datetime
 from github import Github
 from github import GithubException
 import io
-import streamlit.components.v1 as components
 
 # Page config
 st.set_page_config(page_title="Belfast 12 Pubs of Christmas", page_icon="🍺", layout="wide")
@@ -417,222 +416,40 @@ def show_map():
         st.error("Error displaying map. Please refresh the page.")
 
 def show_punishment_wheel():
-    """Display spinning wheel with animated result"""
+    """Display simple spinning wheel"""
     st.header("😈 Rule Breaker's Wheel")
     
-    # Updated CSS with dark mode compatibility
-    st.markdown("""
-        <style>
-        /* Dark mode adjustments */
-        .wheel-container {
-            width: 300px;
-            height: 300px;
-            margin: 50px auto;
-            position: relative;
-            background: transparent;
-        }
-
-        .wheel {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            position: relative;
-            border: 10px solid #ffd700;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-            transform-style: preserve-3d;
-            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-            background: #2d2d2d;
-        }
-
-        .wheel-section {
-            position: absolute;
-            width: 50%;
-            height: 50%;
-            transform-origin: 100% 100%;
-            clip-path: polygon(100% 50%, 100% 100%, 0 100%, 0 50%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-        }
-
-        .wheel.spinning {
-            animation: spin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99) forwards;
-        }
-
-        .wheel-pointer {
-            position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 30px;
-            height: 50px;
-            background: #ff4b4b;
-            clip-path: polygon(50% 100%, 0 0, 100% 0);
-            z-index: 2;
-            box-shadow: 0 0 10px rgba(255, 75, 75, 0.5);
-        }
-
-        .wheel-center {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            background: #ffd700;
-            border: 5px solid #333;
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
-        }
-
-        /* Modal Styles for Dark Mode */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            backdrop-filter: blur(5px);
-        }
-
-        .modal-content {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #1e1e1e;
-            padding: 30px;
-            border-radius: 15px;
-            border: 2px solid #ffd700;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
-            text-align: center;
-            z-index: 1001;
-            min-width: 300px;
-        }
-
-        .punishment-title {
-            font-size: 24px;
-            color: #ffd700;
-            margin-bottom: 20px;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-        }
-
-        .punishment-text {
-            font-size: 20px;
-            color: #ffffff;
-            margin-bottom: 25px;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-        }
-
-        .close-button {
-            padding: 10px 25px;
-            background: #ff4b4b;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .close-button:hover {
-            background: #ff3333;
-            box-shadow: 0 0 15px rgba(255, 75, 75, 0.5);
-        }
-
-        /* Animation keyframes */
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(var(--spin-deg)); }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        /* Wheel section colors */
-        .section-1 { background: #FF4B4B; }
-        .section-2 { background: #4CAF50; }
-        .section-3 { background: #2196F3; }
-        .section-4 { background: #FFC107; }
-        .section-5 { background: #9C27B0; }
-        .section-6 { background: #FF9800; }
-        .section-7 { background: #E91E63; }
-        .section-8 { background: #00BCD4; }
-        .section-9 { background: #8BC34A; }
-        .section-10 { background: #FF5722; }
-        .section-11 { background: #3F51B5; }
-        .section-12 { background: #009688; }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # Create wheel HTML with numbered sections
     wheel_html = """
         <div class="wheel-container">
             <div class="wheel-pointer"></div>
             <div class="wheel">
-                <div class="wheel-section section-1" style="transform: rotate(0deg);">1</div>
-                <div class="wheel-section section-2" style="transform: rotate(30deg);">2</div>
-                <div class="wheel-section section-3" style="transform: rotate(60deg);">3</div>
-                <div class="wheel-section section-4" style="transform: rotate(90deg);">4</div>
-                <div class="wheel-section section-5" style="transform: rotate(120deg);">5</div>
-                <div class="wheel-section section-6" style="transform: rotate(150deg);">6</div>
-                <div class="wheel-section section-7" style="transform: rotate(180deg);">7</div>
-                <div class="wheel-section section-8" style="transform: rotate(210deg);">8</div>
-                <div class="wheel-section section-9" style="transform: rotate(240deg);">9</div>
-                <div class="wheel-section section-10" style="transform: rotate(270deg);">10</div>
-                <div class="wheel-section section-11" style="transform: rotate(300deg);">11</div>
-                <div class="wheel-section section-12" style="transform: rotate(330deg);">12</div>
+                <div class="wheel-section" style="--color: #FF4B4B; transform: rotate(0deg);"></div>
+                <div class="wheel-section" style="--color: #4CAF50; transform: rotate(30deg);"></div>
+                <div class="wheel-section" style="--color: #2196F3; transform: rotate(60deg);"></div>
+                <div class="wheel-section" style="--color: #FFC107; transform: rotate(90deg);"></div>
+                <div class="wheel-section" style="--color: #9C27B0; transform: rotate(120deg);"></div>
+                <div class="wheel-section" style="--color: #FF9800; transform: rotate(150deg);"></div>
+                <div class="wheel-section" style="--color: #E91E63; transform: rotate(180deg);"></div>
+                <div class="wheel-section" style="--color: #00BCD4; transform: rotate(210deg);"></div>
+                <div class="wheel-section" style="--color: #8BC34A; transform: rotate(240deg);"></div>
+                <div class="wheel-section" style="--color: #FF5722; transform: rotate(270deg);"></div>
+                <div class="wheel-section" style="--color: #3F51B5; transform: rotate(300deg);"></div>
+                <div class="wheel-section" style="--color: #009688; transform: rotate(330deg);"></div>
                 <div class="wheel-center"></div>
             </div>
         </div>
-
-        <div class="modal-overlay">
-            <div class="modal-content">
-                <div class="punishment-title">Your Punishment</div>
-                <div class="punishment-text" id="punishment-result"></div>
-                <button class="close-button" onclick="closeModal()">Accept Your Fate</button>
-            </div>
-        </div>
-    """
-
-    # JavaScript for wheel control
-    js_code = """
-        <script>
-        function spinWheel(finalRotation) {
-            const wheel = document.querySelector('.wheel');
-            wheel.style.setProperty('--spin-deg', finalRotation + 'deg');
-            wheel.classList.add('spinning');
-            
-            setTimeout(() => {
-                document.querySelector('.modal-overlay').style.display = 'block';
-            }, 4000);
-        }
-
-        function closeModal() {
-            document.querySelector('.modal-overlay').style.display = 'none';
-            location.reload();
-        }
-        </script>
     """
 
     if st.button("Spin the Wheel", type="primary"):
+        # Show spinning wheel
+        st.markdown(wheel_html.replace('wheel">', 'wheel spinning">'), unsafe_allow_html=True)
+        
+        # Wait for animation
+        with st.spinner(""):
+            time.sleep(4)
+        
+        # Save and display punishment
         punishment = random.choice(PUNISHMENTS)
-        final_rotation = random.randint(1440, 1800)  # 4-5 full spins
-
-        # Save punishment to database
         participants_df, punishments_df = load_data()
         participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
         current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
@@ -646,17 +463,12 @@ def show_punishment_wheel():
         
         punishments_df = pd.concat([punishments_df, new_punishment], ignore_index=True)
         save_data(participants_df, punishments_df)
-
-        # Display spinning wheel and result
-        components.html(
-            f"{wheel_html}{js_code}<script>setTimeout(() => spinWheel({final_rotation}), 100);"
-            f"document.getElementById('punishment-result').innerText = '{punishment}';</script>",
-            height=700,
-        )
+        
         st.snow()
+        st.success(f"Your punishment is: {punishment}")
     else:
         # Show static wheel
-        components.html(f"{wheel_html}{js_code}", height=700)
+        st.markdown(wheel_html, unsafe_allow_html=True)
 
 def show_progress(name):
     """Show progress for current participant"""
