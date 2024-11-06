@@ -420,16 +420,16 @@ def show_punishment_wheel():
     """Display spinning wheel with animated result"""
     st.header("😈 Rule Breaker's Wheel")
     
-    # Add custom CSS with animation and modal
+    # Updated CSS with dark mode compatibility
     st.markdown("""
         <style>
-        /* Wheel Styles */
+        /* Dark mode adjustments */
         .wheel-container {
             width: 300px;
             height: 300px;
             margin: 50px auto;
             position: relative;
-            perspective: 1000px;
+            background: transparent;
         }
 
         .wheel {
@@ -437,10 +437,11 @@ def show_punishment_wheel():
             height: 100%;
             border-radius: 50%;
             position: relative;
-            border: 10px solid gold;
-            box-shadow: 0 0 0 10px #333;
+            border: 10px solid #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
             transform-style: preserve-3d;
             transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            background: #2d2d2d;
         }
 
         .wheel-section {
@@ -452,14 +453,10 @@ def show_punishment_wheel():
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-weight: bold;
+            font-size: 14px;
             color: white;
-            text-shadow: 1px 1px 2px black;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(var(--spin-deg)); }
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
         }
 
         .wheel.spinning {
@@ -468,30 +465,32 @@ def show_punishment_wheel():
 
         .wheel-pointer {
             position: absolute;
-            top: -20px;
+            top: -25px;
             left: 50%;
             transform: translateX(-50%);
-            width: 20px;
-            height: 40px;
-            background: red;
+            width: 30px;
+            height: 50px;
+            background: #ff4b4b;
             clip-path: polygon(50% 100%, 0 0, 100% 0);
             z-index: 2;
+            box-shadow: 0 0 10px rgba(255, 75, 75, 0.5);
         }
 
         .wheel-center {
             position: absolute;
-            width: 40px;
-            height: 40px;
-            background: gold;
+            width: 50px;
+            height: 50px;
+            background: #ffd700;
             border: 5px solid #333;
             border-radius: 50%;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 1;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
         }
 
-        /* Modal Styles */
+        /* Modal Styles for Dark Mode */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -499,9 +498,9 @@ def show_punishment_wheel():
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             z-index: 1000;
-            animation: fadeIn 0.3s ease-out;
+            backdrop-filter: blur(5px);
         }
 
         .modal-content {
@@ -509,13 +508,53 @@ def show_punishment_wheel():
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: white;
+            background: #1e1e1e;
             padding: 30px;
             border-radius: 15px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border: 2px solid #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
             text-align: center;
             z-index: 1001;
-            animation: slideIn 0.4s ease-out;
+            min-width: 300px;
+        }
+
+        .punishment-title {
+            font-size: 24px;
+            color: #ffd700;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .punishment-text {
+            font-size: 20px;
+            color: #ffffff;
+            margin-bottom: 25px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .close-button {
+            padding: 10px 25px;
+            background: #ff4b4b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .close-button:hover {
+            background: #ff3333;
+            box-shadow: 0 0 15px rgba(255, 75, 75, 0.5);
+        }
+
+        /* Animation keyframes */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(var(--spin-deg)); }
         }
 
         @keyframes fadeIn {
@@ -523,48 +562,60 @@ def show_punishment_wheel():
             to { opacity: 1; }
         }
 
-        @keyframes slideIn {
-            from { transform: translate(-50%, -60%); opacity: 0; }
-            to { transform: translate(-50%, -50%); opacity: 1; }
-        }
-
-        .punishment-title {
-            font-size: 24px;
-            color: #FF4B4B;
-            margin-bottom: 15px;
-        }
-
-        .punishment-text {
-            font-size: 20px;
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        .close-button {
-            padding: 8px 20px;
-            background: #FF4B4B;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .close-button:hover {
-            background: #ff3333;
-        }
+        /* Wheel section colors */
+        .section-1 { background: #FF4B4B; }
+        .section-2 { background: #4CAF50; }
+        .section-3 { background: #2196F3; }
+        .section-4 { background: #FFC107; }
+        .section-5 { background: #9C27B0; }
+        .section-6 { background: #FF9800; }
+        .section-7 { background: #E91E63; }
+        .section-8 { background: #00BCD4; }
+        .section-9 { background: #8BC34A; }
+        .section-10 { background: #FF5722; }
+        .section-11 { background: #3F51B5; }
+        .section-12 { background: #009688; }
         </style>
     """, unsafe_allow_html=True)
 
-    # Create wheel sections with JavaScript for spinning
-    wheel_script = """
+    # Create wheel HTML with numbered sections
+    wheel_html = """
+        <div class="wheel-container">
+            <div class="wheel-pointer"></div>
+            <div class="wheel">
+                <div class="wheel-section section-1" style="transform: rotate(0deg);">1</div>
+                <div class="wheel-section section-2" style="transform: rotate(30deg);">2</div>
+                <div class="wheel-section section-3" style="transform: rotate(60deg);">3</div>
+                <div class="wheel-section section-4" style="transform: rotate(90deg);">4</div>
+                <div class="wheel-section section-5" style="transform: rotate(120deg);">5</div>
+                <div class="wheel-section section-6" style="transform: rotate(150deg);">6</div>
+                <div class="wheel-section section-7" style="transform: rotate(180deg);">7</div>
+                <div class="wheel-section section-8" style="transform: rotate(210deg);">8</div>
+                <div class="wheel-section section-9" style="transform: rotate(240deg);">9</div>
+                <div class="wheel-section section-10" style="transform: rotate(270deg);">10</div>
+                <div class="wheel-section section-11" style="transform: rotate(300deg);">11</div>
+                <div class="wheel-section section-12" style="transform: rotate(330deg);">12</div>
+                <div class="wheel-center"></div>
+            </div>
+        </div>
+
+        <div class="modal-overlay">
+            <div class="modal-content">
+                <div class="punishment-title">Your Punishment</div>
+                <div class="punishment-text" id="punishment-result"></div>
+                <button class="close-button" onclick="closeModal()">Accept Your Fate</button>
+            </div>
+        </div>
+    """
+
+    # JavaScript for wheel control
+    js_code = """
         <script>
         function spinWheel(finalRotation) {
             const wheel = document.querySelector('.wheel');
             wheel.style.setProperty('--spin-deg', finalRotation + 'deg');
             wheel.classList.add('spinning');
             
-            // Show result after animation
             setTimeout(() => {
                 document.querySelector('.modal-overlay').style.display = 'block';
             }, 4000);
@@ -572,48 +623,16 @@ def show_punishment_wheel():
 
         function closeModal() {
             document.querySelector('.modal-overlay').style.display = 'none';
+            location.reload();
         }
         </script>
     """
 
-    # Create wheel HTML
-    wheel_html = f"""
-        <div class="wheel-container">
-            <div class="wheel-pointer"></div>
-            <div class="wheel">
-                <div class="wheel-section" style="--color: #FF4B4B; transform: rotate(0deg);">1</div>
-                <div class="wheel-section" style="--color: #4CAF50; transform: rotate(30deg);">2</div>
-                <div class="wheel-section" style="--color: #2196F3; transform: rotate(60deg);">3</div>
-                <div class="wheel-section" style="--color: #FFC107; transform: rotate(90deg);">4</div>
-                <div class="wheel-section" style="--color: #9C27B0; transform: rotate(120deg);">5</div>
-                <div class="wheel-section" style="--color: #FF9800; transform: rotate(150deg);">6</div>
-                <div class="wheel-section" style="--color: #E91E63; transform: rotate(180deg);">7</div>
-                <div class="wheel-section" style="--color: #00BCD4; transform: rotate(210deg);">8</div>
-                <div class="wheel-section" style="--color: #8BC34A; transform: rotate(240deg);">9</div>
-                <div class="wheel-section" style="--color: #FF5722; transform: rotate(270deg);">10</div>
-                <div class="wheel-section" style="--color: #3F51B5; transform: rotate(300deg);">11</div>
-                <div class="wheel-section" style="--color: #009688; transform: rotate(330deg);">12</div>
-                <div class="wheel-center"></div>
-            </div>
-        </div>
-
-        <!-- Result Modal -->
-        <div class="modal-overlay" onclick="closeModal()">
-            <div class="modal-content" onclick="event.stopPropagation()">
-                <div class="punishment-title">Your Punishment</div>
-                <div class="punishment-text" id="punishment-result"></div>
-                <button class="close-button" onclick="closeModal()">Accept Your Fate</button>
-            </div>
-        </div>
-        {wheel_script}
-    """
-
     if st.button("Spin the Wheel", type="primary"):
-        # Choose random punishment and rotation
         punishment = random.choice(PUNISHMENTS)
         final_rotation = random.randint(1440, 1800)  # 4-5 full spins
 
-        # Save punishment
+        # Save punishment to database
         participants_df, punishments_df = load_data()
         participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
         current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
@@ -629,20 +648,16 @@ def show_punishment_wheel():
         save_data(participants_df, punishments_df)
 
         # Display spinning wheel and result
-        components.html(f"""
-            {wheel_html}
-            <script>
-                setTimeout(() => {{
-                    spinWheel({final_rotation});
-                    document.getElementById('punishment-result').innerText = "{punishment}";
-                }}, 100);
-            </script>
-        """, height=600)
-
+        components.html(
+            f"{wheel_html}{js_code}<script>setTimeout(() => spinWheel({final_rotation}), 100);"
+            f"document.getElementById('punishment-result').innerText = '{punishment}';</script>",
+            height=700,
+        )
         st.snow()
     else:
         # Show static wheel
-        st.markdown(wheel_html, unsafe_allow_html=True)
+        components.html(f"{wheel_html}{js_code}", height=700)
+
 def show_progress(name):
     """Show progress for current participant"""
     participants_df, _ = load_data()
