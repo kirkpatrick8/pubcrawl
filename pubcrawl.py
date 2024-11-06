@@ -8,6 +8,7 @@ from datetime import datetime
 from github import Github
 from github import GithubException
 import io
+import streamlit.components.v1 as components
 
 # Page config
 st.set_page_config(page_title="Belfast 12 Pubs of Christmas", page_icon="🍺", layout="wide")
