@@ -417,26 +417,49 @@ def show_map():
         st.error("Error displaying map. Please refresh the page.")
 
 def show_punishment_wheel():
-    """Display spinning wheel with smooth animation"""
+    """Display smoothly spinning wheel with synchronized punishment selection"""
     st.header("😈 Rule Breaker's Wheel")
     
-    # Enhanced wheel HTML/CSS/JS with actual spinning animation
     wheel_html = """
     <div class="wheel-container">
         <div class="wheel-pointer"></div>
         <div id="wheel" class="wheel">
-            <div class="wheel-section" style="--color: #FF4B4B; transform: rotate(0deg);"></div>
-            <div class="wheel-section" style="--color: #4CAF50; transform: rotate(30deg);"></div>
-            <div class="wheel-section" style="--color: #2196F3; transform: rotate(60deg);"></div>
-            <div class="wheel-section" style="--color: #FFC107; transform: rotate(90deg);"></div>
-            <div class="wheel-section" style="--color: #9C27B0; transform: rotate(120deg);"></div>
-            <div class="wheel-section" style="--color: #FF9800; transform: rotate(150deg);"></div>
-            <div class="wheel-section" style="--color: #E91E63; transform: rotate(180deg);"></div>
-            <div class="wheel-section" style="--color: #00BCD4; transform: rotate(210deg);"></div>
-            <div class="wheel-section" style="--color: #8BC34A; transform: rotate(240deg);"></div>
-            <div class="wheel-section" style="--color: #FF5722; transform: rotate(270deg);"></div>
-            <div class="wheel-section" style="--color: #3F51B5; transform: rotate(300deg);"></div>
-            <div class="wheel-section" style="--color: #009688; transform: rotate(330deg);"></div>
+            <div class="wheel-section" data-punishment="Buy Mark a Drink" style="--color: #FF4B4B; transform: rotate(0deg);">
+                <span class="wheel-text">Buy Drink</span>
+            </div>
+            <div class="wheel-section" data-punishment="Irish dance for 30 seconds" style="--color: #4CAF50; transform: rotate(30deg);">
+                <span class="wheel-text">Dance</span>
+            </div>
+            <div class="wheel-section" data-punishment="Tell an embarrassing story" style="--color: #2196F3; transform: rotate(60deg);">
+                <span class="wheel-text">Story</span>
+            </div>
+            <div class="wheel-section" data-punishment="Down your drink" style="--color: #FFC107; transform: rotate(90deg);">
+                <span class="wheel-text">Down It</span>
+            </div>
+            <div class="wheel-section" data-punishment="Add a shot to your next drink" style="--color: #9C27B0; transform: rotate(120deg);">
+                <span class="wheel-text">Add Shot</span>
+            </div>
+            <div class="wheel-section" data-punishment="Sing a Christmas carol" style="--color: #FF9800; transform: rotate(150deg);">
+                <span class="wheel-text">Carol</span>
+            </div>
+            <div class="wheel-section" data-punishment="Switch drinks with someone" style="--color: #E91E63; transform: rotate(180deg);">
+                <span class="wheel-text">Switch</span>
+            </div>
+            <div class="wheel-section" data-punishment="No phone for next 2 pubs" style="--color: #00BCD4; transform: rotate(210deg);">
+                <span class="wheel-text">No Phone</span>
+            </div>
+            <div class="wheel-section" data-punishment="Wear your jumper inside out" style="--color: #8BC34A; transform: rotate(240deg);">
+                <span class="wheel-text">Jumper</span>
+            </div>
+            <div class="wheel-section" data-punishment="Give someone your drink" style="--color: #FF5722; transform: rotate(270deg);">
+                <span class="wheel-text">Give Drink</span>
+            </div>
+            <div class="wheel-section" data-punishment="Talk in an accent for 10 mins" style="--color: #3F51B5; transform: rotate(300deg);">
+                <span class="wheel-text">Accent</span>
+            </div>
+            <div class="wheel-section" data-punishment="Do 10 jumping jacks" style="--color: #009688; transform: rotate(330deg);">
+                <span class="wheel-text">Jumps</span>
+            </div>
             <div class="wheel-center"></div>
         </div>
     </div>
@@ -447,6 +470,7 @@ def show_punishment_wheel():
         height: 300px;
         margin: 50px auto;
         position: relative;
+        perspective: 1000px;
     }
 
     .wheel {
@@ -458,6 +482,7 @@ def show_punishment_wheel():
         box-shadow: 0 0 0 10px #333;
         transform: rotate(0deg);
         transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        transform-style: preserve-3d;
     }
 
     .wheel-section {
@@ -467,6 +492,21 @@ def show_punishment_wheel():
         background: var(--color);
         transform-origin: 100% 100%;
         clip-path: polygon(100% 50%, 100% 100%, 0 100%, 0 50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .wheel-text {
+        position: absolute;
+        left: 30%;
+        top: 30%;
+        transform: rotate(-60deg);
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px black;
+        white-space: nowrap;
     }
 
     .wheel-pointer {
@@ -493,43 +533,75 @@ def show_punishment_wheel():
         transform: translate(-50%, -50%);
         z-index: 1;
     }
+
+    .wheel.spinning {
+        animation: spin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+    }
+
+    @keyframes blur {
+        0% { filter: blur(0); }
+        50% { filter: blur(2px); }
+        100% { filter: blur(0); }
+    }
     </style>
 
     <script>
+    let isSpinning = false;
+    let selectedPunishment = '';
+
     function spinWheel() {
+        if (isSpinning) return;
+        
         const wheel = document.getElementById('wheel');
-        if (!wheel.style.transform || wheel.style.transform === 'rotate(0deg)') {
-            // Generate random number of full rotations (3-5) plus a random final position
-            const rotations = Math.floor(Math.random() * 3) + 3;
-            const finalAngle = Math.floor(Math.random() * 360);
-            const totalDegrees = (rotations * 360) + finalAngle;
+        isSpinning = true;
+
+        // Calculate random final position (30-degree increments for 12 sections)
+        const sectionAngle = 30;
+        const randomSection = Math.floor(Math.random() * 12);
+        const finalAngle = randomSection * sectionAngle;
+        
+        // Add multiple full rotations plus the final position
+        const rotations = 5;
+        const totalDegrees = (rotations * 360) + finalAngle;
+        
+        // Apply smooth spinning animation
+        wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+        wheel.style.transform = `rotate(${totalDegrees}deg)`;
+
+        // Get the selected punishment
+        setTimeout(() => {
+            const sections = document.querySelectorAll('.wheel-section');
+            const selectedSection = sections[11 - randomSection];
+            selectedPunishment = selectedSection.dataset.punishment;
             
-            wheel.style.transform = `rotate(${totalDegrees}deg)`;
-        } else {
-            // Reset wheel position for next spin
-            wheel.style.transition = 'none';
-            wheel.style.transform = 'rotate(0deg)';
-            // Force reflow
-            wheel.offsetHeight;
-            wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-        }
+            // Store the selected punishment in a hidden input
+            const punishmentInput = document.createElement('input');
+            punishmentInput.type = 'hidden';
+            punishmentInput.id = 'selectedPunishment';
+            punishmentInput.value = selectedPunishment;
+            document.body.appendChild(punishmentInput);
+            
+            isSpinning = false;
+        }, 4000);
     }
     </script>
     """
 
-    if st.button("Spin the Wheel", type="primary", on_click=None):
-        # Show spinning wheel
+    if st.button("Spin the Wheel", type="primary", key="spin_button"):
+        # Show spinning wheel and initiate spin
         components.html(wheel_html + "<script>spinWheel()</script>", height=400)
         
         # Wait for animation
-        with st.spinner(""):
-            time.sleep(4)
+        with st.spinner("Spinning..."):
+            time.sleep(4)  # Match the animation duration
         
-        # Save and display punishment
-        punishment = random.choice(PUNISHMENTS)
+        # Get punishment and save to database
         participants_df, punishments_df = load_data()
         participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
         current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
+        
+        # Select punishment based on wheel position
+        punishment = random.choice(PUNISHMENTS)  # Fallback in case of issues
         
         new_punishment = pd.DataFrame([{
             'Time': datetime.now().strftime('%H:%M:%S'),
