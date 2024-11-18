@@ -8,6 +8,7 @@ from datetime import datetime
 from github import Github
 from github import GithubException
 import io
+import streamlit.components.v1 as components
 
 # Page config
 st.set_page_config(page_title="Belfast 12 Pubs of Christmas", page_icon="🍺", layout="wide")
@@ -416,33 +417,109 @@ def show_map():
         st.error("Error displaying map. Please refresh the page.")
 
 def show_punishment_wheel():
-    """Display simple spinning wheel"""
+    """Display spinning wheel with smooth animation"""
     st.header("😈 Rule Breaker's Wheel")
     
+    # Enhanced wheel HTML/CSS/JS with actual spinning animation
     wheel_html = """
-        <div class="wheel-container">
-            <div class="wheel-pointer"></div>
-            <div class="wheel">
-                <div class="wheel-section" style="--color: #FF4B4B; transform: rotate(0deg);"></div>
-                <div class="wheel-section" style="--color: #4CAF50; transform: rotate(30deg);"></div>
-                <div class="wheel-section" style="--color: #2196F3; transform: rotate(60deg);"></div>
-                <div class="wheel-section" style="--color: #FFC107; transform: rotate(90deg);"></div>
-                <div class="wheel-section" style="--color: #9C27B0; transform: rotate(120deg);"></div>
-                <div class="wheel-section" style="--color: #FF9800; transform: rotate(150deg);"></div>
-                <div class="wheel-section" style="--color: #E91E63; transform: rotate(180deg);"></div>
-                <div class="wheel-section" style="--color: #00BCD4; transform: rotate(210deg);"></div>
-                <div class="wheel-section" style="--color: #8BC34A; transform: rotate(240deg);"></div>
-                <div class="wheel-section" style="--color: #FF5722; transform: rotate(270deg);"></div>
-                <div class="wheel-section" style="--color: #3F51B5; transform: rotate(300deg);"></div>
-                <div class="wheel-section" style="--color: #009688; transform: rotate(330deg);"></div>
-                <div class="wheel-center"></div>
-            </div>
+    <div class="wheel-container">
+        <div class="wheel-pointer"></div>
+        <div id="wheel" class="wheel">
+            <div class="wheel-section" style="--color: #FF4B4B; transform: rotate(0deg);"></div>
+            <div class="wheel-section" style="--color: #4CAF50; transform: rotate(30deg);"></div>
+            <div class="wheel-section" style="--color: #2196F3; transform: rotate(60deg);"></div>
+            <div class="wheel-section" style="--color: #FFC107; transform: rotate(90deg);"></div>
+            <div class="wheel-section" style="--color: #9C27B0; transform: rotate(120deg);"></div>
+            <div class="wheel-section" style="--color: #FF9800; transform: rotate(150deg);"></div>
+            <div class="wheel-section" style="--color: #E91E63; transform: rotate(180deg);"></div>
+            <div class="wheel-section" style="--color: #00BCD4; transform: rotate(210deg);"></div>
+            <div class="wheel-section" style="--color: #8BC34A; transform: rotate(240deg);"></div>
+            <div class="wheel-section" style="--color: #FF5722; transform: rotate(270deg);"></div>
+            <div class="wheel-section" style="--color: #3F51B5; transform: rotate(300deg);"></div>
+            <div class="wheel-section" style="--color: #009688; transform: rotate(330deg);"></div>
+            <div class="wheel-center"></div>
         </div>
+    </div>
+
+    <style>
+    .wheel-container {
+        width: 300px;
+        height: 300px;
+        margin: 50px auto;
+        position: relative;
+    }
+
+    .wheel {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        position: relative;
+        border: 10px solid gold;
+        box-shadow: 0 0 0 10px #333;
+        transform: rotate(0deg);
+        transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+    }
+
+    .wheel-section {
+        position: absolute;
+        width: 50%;
+        height: 50%;
+        background: var(--color);
+        transform-origin: 100% 100%;
+        clip-path: polygon(100% 50%, 100% 100%, 0 100%, 0 50%);
+    }
+
+    .wheel-pointer {
+        position: absolute;
+        top: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px;
+        height: 40px;
+        background: red;
+        clip-path: polygon(50% 100%, 0 0, 100% 0);
+        z-index: 2;
+    }
+
+    .wheel-center {
+        position: absolute;
+        width: 40px;
+        height: 40px;
+        background: gold;
+        border: 5px solid #333;
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1;
+    }
+    </style>
+
+    <script>
+    function spinWheel() {
+        const wheel = document.getElementById('wheel');
+        if (!wheel.style.transform || wheel.style.transform === 'rotate(0deg)') {
+            // Generate random number of full rotations (3-5) plus a random final position
+            const rotations = Math.floor(Math.random() * 3) + 3;
+            const finalAngle = Math.floor(Math.random() * 360);
+            const totalDegrees = (rotations * 360) + finalAngle;
+            
+            wheel.style.transform = `rotate(${totalDegrees}deg)`;
+        } else {
+            // Reset wheel position for next spin
+            wheel.style.transition = 'none';
+            wheel.style.transform = 'rotate(0deg)';
+            // Force reflow
+            wheel.offsetHeight;
+            wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+        }
+    }
+    </script>
     """
 
-    if st.button("Spin the Wheel", type="primary"):
+    if st.button("Spin the Wheel", type="primary", on_click=None):
         # Show spinning wheel
-        st.markdown(wheel_html.replace('wheel">', 'wheel spinning">'), unsafe_allow_html=True)
+        components.html(wheel_html + "<script>spinWheel()</script>", height=400)
         
         # Wait for animation
         with st.spinner(""):
@@ -468,7 +545,7 @@ def show_punishment_wheel():
         st.success(f"Your punishment is: {punishment}")
     else:
         # Show static wheel
-        st.markdown(wheel_html, unsafe_allow_html=True)
+        components.html(wheel_html, height=400)
 
 def show_progress(name):
     """Show progress for current participant"""
