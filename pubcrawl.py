@@ -125,29 +125,29 @@ PUBS_DATA = {
         -5.928617, -5.927442, -5.927058, -5.926673, -5.926417, -5.925219
     ],
     'rules': [
-        "Christmas Jumpers Required", "Last Names Only", "No Swearing Challenge",
+        "Christmas attire Required and speak to someone new", "Last Names Only", "No Swearing Challenge",
         "Power Hour (Down Drink in 2-3 Gulps)", "No Phones & Drink with Left Hand Only",
         "Must Speak in Different Accents", "Different Drink Type Required",
         "Must Bow Before Taking a Drink", "Double Parked",
-        "The Arm Pub - Drink from Someone Else's Arm",
-        "No First Names & Photo Challenge", "Buddy System - Final Challenge"
+        "The Arm Pub (Drink from Someone Else's Arm)",
+        "Photo Challenge (get a photo with a stranger)", "Buddy System - Final Challenge"
     ]
 }
 
 PUNISHMENTS = [
-    "Buy Mark a Drink", "Irish dance for 30 seconds", "Tell an embarrassing story",
-    "Down your drink", "Add a shot to your next drink", "Sing a Christmas carol",
-    "Switch drinks with someone", "No phone for next 2 pubs", 
+    "Buy Mark a Drink", "Irish dance for 30 seconds", "Touch your Toes",
+    "Down your drink", "Shot for you or a friend", "Sing a Christmas carol",
+    "Switch drinks with someone", "No Punishment", 
     "Wear your jumper inside out", "Give someone your drink",
-    "Talk in an accent for 10 mins", "Do 10 jumping jacks"
+    "Talk in an accent for 10 mins", "Tell a fake back story to a random person"
 ]
 
 # Achievement definitions
 ACHIEVEMENTS = {
     'first_pub': {'name': 'First Timer', 'desc': 'Complete your first pub', 'points': 100},
     'halfway': {'name': 'Halfway Hero', 'desc': 'Complete 6 pubs', 'points': 250},
-    'finisher': {'name': 'Challenge Champion', 'desc': 'Complete all 12 pubs', 'points': 500},
-    'rule_breaker': {'name': 'Rule Breaker', 'desc': 'Get punished 3 times', 'points': 150},
+    'finisher': {'name': 'Challenge Champion', 'desc': 'Complete all 12 pubs', 'points': 1000},
+    'rule_breaker': {'name': 'Rule Breaker', 'desc': 'Get punished 3 times', 'points': 50},
     'dance_master': {'name': 'Dance Master', 'desc': 'Get the Irish dance punishment twice', 'points': 150},
     'karaoke_king': {'name': 'Karaoke King/Queen', 'desc': 'Sing two Christmas carols as punishment', 'points': 150},
     'silent_warrior': {'name': 'Silent Warrior', 'desc': 'Complete No Swearing Challenge without punishment', 'points': 200},
@@ -155,7 +155,7 @@ ACHIEVEMENTS = {
     'perfect_run': {'name': 'Perfect Run', 'desc': 'Complete all pubs with no punishments', 'points': 500},
     'punishment_collector': {'name': 'Punishment Collector', 'desc': 'Receive every type of punishment', 'points': 400},
     'speed_demon': {'name': 'Speed Demon', 'desc': 'Complete route in under 3 hours', 'points': 400},
-    'golden_route': {'name': 'Golden Route', 'desc': 'Visit pubs in perfect order without skipping', 'points': 300}
+    'golden_route': {'name': 'Golden Route', 'desc': 'Visit pubs in perfect order without skipping', 'points': 50}
 }
 # Data management functions
 @st.cache_data(ttl=10)  # Cache for 10 seconds
