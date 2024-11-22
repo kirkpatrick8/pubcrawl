@@ -299,7 +299,6 @@ def auto_refresh():
     st.cache_data.clear()
     time.sleep(0.1)
     st.rerun()
-
 def check_achievements(name, participants_df, punishments_df=None):
     """Check and award achievements"""
     participant = participants_df[participants_df['Name'] == name].iloc[0]
@@ -344,7 +343,8 @@ def check_achievements(name, participants_df, punishments_df=None):
         carol_count = len(user_punishments[user_punishments['Punishment'].str.contains('Christmas carol', case=False)])
         if carol_count >= 2:
             award_achievement('karaoke_king')
-            # Silent Warrior & Phone Free achievements
+        
+        # Silent Warrior & Phone Free achievements
         if completed_count > 2:
             no_swearing_punishments = user_punishments[user_punishments['Pub'] == PUBS_DATA['name'][2]]
             if len(no_swearing_punishments) == 0:
@@ -420,33 +420,94 @@ def show_safety_information():
         Remember: Having fun doesn't mean compromising your safety. Look after yourself and your friends!
     """)
 
-def name_entry_modal():
-    """Display name entry modal"""
-    if 'current_participant' not in st.session_state:
-        st.session_state.current_participant = None
+def show_punishment_wheel():
+    """Display smoothly spinning wheel with synchronized punishment selection"""
+    st.header("😈 Rule Breaker's Wheel")
+    
+    wheel_html = """
+    <div class="wheel-container">
+        <div class="wheel-pointer"></div>
+        <div id="wheel" class="wheel">
+            <div class="wheel-section" data-punishment="Buy Mark a Drink" style="--color: #FF4B4B; transform: rotate(0deg);">
+                <span class="wheel-text">Buy Drink</span>
+            </div>
+            <div class="wheel-section" data-punishment="Irish dance for 30 seconds" style="--color: #4CAF50; transform: rotate(30deg);">
+                <span class="wheel-text">Dance</span>
+            </div>
+            <div class="wheel-section" data-punishment="Tell an embarrassing story" style="--color: #2196F3; transform: rotate(60deg);">
+                <span class="wheel-text">Story</span>
+            </div>
+            <!-- Add more wheel sections for other punishments -->
+        </div>
+        <div class="wheel-center"></div>
+    </div>
+    """
+    
+    if st.button("Spin the Wheel", type="primary"):
+        components.html(wheel_html + "<script>spinWheel()</script>", height=400)
         
-    if st.session_state.current_participant is None:
-        with st.container():
-            st.markdown("### Welcome to the Belfast 12 Pubs of Christmas! 🎄")
-            name = st.text_input("Enter your name to begin:")
-            if name:
-                st.session_state.current_participant = name
-                
-                # Initialize participant data if needed
-                participants_df, punishments_df = load_data()
-                if name not in participants_df['Name'].values:
-                    new_participant = pd.DataFrame([{
-                        'Name': name,
-                        'CurrentPub': 0,
-                        'CompletedPubs': '',
-                        'Points': 0,
-                        'Achievements': '',
-                        'StartTime': datetime.now().isoformat()
-                    }])
-                    participants_df = pd.concat([participants_df, new_participant], ignore_index=True)
-                    save_data(participants_df, punishments_df)
-                
-                auto_refresh()
+        with st.spinner("Spinning..."):
+            time.sleep(4)
+        
+        punishment = random.choice(PUNISHMENTS)
+        
+        # Save punishment to database
+        participants_df, punishments_df = load_data()
+        participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
+        current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
+        
+        new_punishment = pd.DataFrame([{
+            'Time': datetime.now().strftime('%H:%M:%S'),
+            'Name': st.session_state.current_participant,
+            'Pub': current_pub,
+            'Punishment': punishment
+        }])
+        
+        punishments_df = pd.concat([punishments_df, new_punishment], ignore_index=True)
+        save_data(participants_df, punishments_df)
+        
+        st.snow()
+        st.success(f"Your punishment is: {punishment}")
+    else:
+        components.html(wheel_html, height=400)
+
+def show_leaderboard():
+    """Display leaderboard"""
+    st.header("🏆 Leaderboard")
+    
+    participants_df, punishments_df = load_data()
+    
+    if not participants_df.empty:
+        # Prepare leaderboard data
+        display_data = []
+        for _, row in participants_df.iterrows():
+            completed_pubs = [] if pd.isna(row['CompletedPubs']) else row['CompletedPubs'].split(',')
+            if completed_pubs == ['']:
+                completed_pubs = []
+            
+            achievements = [] if pd.isna(row['Achievements']) else row['Achievements'].split(',')
+            if achievements == ['']:
+                achievements = []
+            
+            current_pub = int(row['CurrentPub'])
+            current_pub_name = PUBS_DATA['name'][current_pub] if current_pub < 12 else 'Finished!'
+            
+            display_data.append({
+                'Name': row['Name'],
+                'Pubs Completed': len(completed_pubs),
+                'Current Location': current_pub_name,
+                'Points': int(row['Points']),
+                'Achievements': len(achievements)
+            })
+        
+        df = pd.DataFrame(display_data)
+        df = df.sort_values(['Points', 'Pubs Completed'], ascending=[False, False])
+        st.dataframe(df, use_container_width=True)
+    
+    if not punishments_df.empty:
+        st.subheader("😈 Recent Punishments")
+        recent = punishments_df.tail(5).sort_values('Time', ascending=False)
+        st.dataframe(recent, use_container_width=True)
 
 def show_map():
     """Display interactive map"""
@@ -465,6 +526,7 @@ def show_map():
             tiles="CartoDB positron"
         )
         
+        # Add markers and lines
         for i, (name, lat, lon) in enumerate(zip(
             PUBS_DATA['name'],
             PUBS_DATA['latitude'],
@@ -519,7 +581,78 @@ def show_map():
     except Exception as e:
         st.error("Error displaying map. Please refresh the page.")
 
-[Rest of the functions remain the same, continuing with main()]
+def name_entry_modal():
+    """Display name entry modal"""
+    if 'current_participant' not in st.session_state:
+        st.session_state.current_participant = None
+        
+    if st.session_state.current_participant is None:
+        with st.container():
+            st.markdown("### Welcome to the Belfast 12 Pubs of Christmas! 🎄")
+            name = st.text_input("Enter your name to begin:")
+            if name:
+                st.session_state.current_participant = name
+                
+                # Initialize participant data if needed
+                participants_df, punishments_df = load_data()
+                if name not in participants_df['Name'].values:
+                    new_participant = pd.DataFrame([{
+                        'Name': name,
+                        'CurrentPub': 0,
+                        'CompletedPubs': '',
+                        'Points': 0,
+                        'Achievements': '',
+                        'StartTime': datetime.now().isoformat()
+                    }])
+                    participants_df = pd.concat([participants_df, new_participant], ignore_index=True)
+                    save_data(participants_df, punishments_df)
+                
+                auto_refresh()
+
+def show_progress(name):
+    """Show progress for current participant"""
+    participants_df, _ = load_data()
+    participant = participants_df[participants_df['Name'] == name].iloc[0]
+    
+    st.header(f"Progress Tracker for {name}")
+    
+    completed_pubs = [] if pd.isna(participant['CompletedPubs']) else participant['CompletedPubs'].split(',')
+    if completed_pubs == ['']:
+        completed_pubs = []
+    
+    progress = len(completed_pubs)
+    current_pub = int(participant['CurrentPub'])
+    
+    st.progress(progress/12)
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Pubs Completed", f"{progress}/12")
+    with col2:
+        st.metric("Pubs Remaining", f"{12-progress}")
+    with col3:
+        st.metric("Points", int(participant['Points']))
+    
+    if current_pub < 12:
+        current_pub_name = PUBS_DATA['name'][current_pub]
+        current_rule = PUBS_DATA['rules'][current_pub]
+        
+        st.subheader(f"Current Pub: {current_pub_name}")
+        st.info(f"Rule: {current_rule}")
+        
+        if st.button("Mark Current Pub as Complete", type="primary"):
+            completed_pubs.append(current_pub_name)
+            participant_idx = participants_df[participants_df['Name'] == name].index[0]
+            
+            participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
+            participants_df.loc[participant_idx, 'CurrentPub'] = current_pub + 1
+            participants_df.loc[participant_idx, 'Points'] += 100
+            
+            participants_df = check_achievements(name, participants_df)
+            save_data(participants_df, load_data()[1])
+            auto_refresh()
+    else:
+        st.success("🎉 Congratulations! You've completed the Belfast 12 Pubs of Christmas! 🎉")
 
 def main():
     st.title("🎄 Belfast 12 Pubs of Christmas 🍺")
@@ -527,11 +660,9 @@ def main():
     name_entry_modal()
     
     if st.session_state.current_participant:
-        # Add refresh button in sidebar
         if st.sidebar.button("Refresh Data"):
             auto_refresh()
         
-        # Main navigation with added Safety tab
         tabs = st.tabs([
             "👥 Leaderboard",
             "📊 My Progress",
@@ -558,6 +689,49 @@ def main():
         
         with tabs[5]:
             show_safety_information()
+
+def show_achievements(name):
+    """Display achievements"""
+    participants_df = load_data()[0]
+    participant = participants_df[participants_df['Name'] == name].iloc[0]
+    earned_achievements = [] if pd.isna(participant['Achievements']) else participant['Achievements'].split(',')
+    if earned_achievements == ['']:
+        earned_achievements = []
+    
+    st.subheader("🏆 Your Achievements")
+    
+    categories = {
+        "Progress": ['first_pub', 'halfway', 'finisher', 'rule_breaker'],
+        "Challenges": ['dance_master', 'karaoke_king', 'silent_warrior', 'phone_free'],
+        "Legendary": ['perfect_run', 'punishment_collector', 'speed_demon', 'golden_route']
+    }
+    
+    for category, achievement_ids in categories.items():
+        st.markdown(f"### {category}")
+        
+        # Show earned achievements
+        earned_in_category = [ach for ach in achievement_ids if ach in earned_achievements]
+        for ach_id in earned_in_category:
+            ach = ACHIEVEMENTS[ach_id]
+            st.markdown(f"""
+                <div class="achievement">
+                    <h3>{ach['name']} ✨</h3>
+                    <p>{ach['desc']}</p>
+                    <small>+{ach['points']} points</small>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        # Show locked achievements
+        locked_in_category = [ach for ach in achievement_ids if ach not in earned_achievements]
+        for ach_id in locked_in_category:
+            ach = ACHIEVEMENTS[ach_id]
+            st.markdown(f"""
+                <div class="locked-achievement">
+                    <h3>🔒 {ach['name']}</h3>
+                    <p>{ach['desc']}</p>
+                    <small>+{ach['points']} points</small>
+                </div>
+            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
