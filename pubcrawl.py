@@ -707,6 +707,9 @@ def main():
         with tabs[5]:
             show_safety_information()
 
+if __name__ == "__main__":
+    main()
+
 def show_achievements(name):
     """Display achievements"""
     participants_df = load_data()[0]
