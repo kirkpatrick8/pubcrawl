@@ -420,56 +420,73 @@ def show_safety_information():
         Remember: Having fun doesn't mean compromising your safety. Look after yourself and your friends!
     """)
 
-def show_punishment_wheel():
-    """Display smoothly spinning wheel with synchronized punishment selection"""
-    st.header("😈 Rule Breaker's Wheel")
+"🏆 Achievements",
+            "🚨 Safety"
+        ])
+        
+        with tabs[0]:
+            show_leaderboard()
+        
+        with tabs[1]:
+            show_progress(st.session_state.current_participant)
+        
+        with tabs[2]:
+            show_map()
+        
+        with tabs[3]:
+            show_punishment_wheel()
+        
+        with tabs[4]:
+            show_achievements(st.session_state.current_participant)
+        
+        with tabs[5]:
+            show_safety_information()
+
+def show_achievements(name):
+    """Display achievements"""
+    participants_df = load_data()[0]
+    participant = participants_df[participants_df['Name'] == name].iloc[0]
+    earned_achievements = [] if pd.isna(participant['Achievements']) else participant['Achievements'].split(',')
+    if earned_achievements == ['']:
+        earned_achievements = []
     
-    wheel_html = """
-    <div class="wheel-container">
-        <div class="wheel-pointer"></div>
-        <div id="wheel" class="wheel">
-            <div class="wheel-section" data-punishment="Buy Mark a Drink" style="--color: #FF4B4B; transform: rotate(0deg);">
-                <span class="wheel-text">Buy Drink</span>
-            </div>
-            <div class="wheel-section" data-punishment="Irish dance for 30 seconds" style="--color: #4CAF50; transform: rotate(30deg);">
-                <span class="wheel-text">Dance</span>
-            </div>
-            <div class="wheel-section" data-punishment="Tell an embarrassing story" style="--color: #2196F3; transform: rotate(60deg);">
-                <span class="wheel-text">Story</span>
-            </div>
-            <!-- Add more wheel sections for other punishments -->
-        </div>
-        <div class="wheel-center"></div>
-    </div>
-    """
+    st.subheader("🏆 Your Achievements")
     
-    if st.button("Spin the Wheel", type="primary"):
-        components.html(wheel_html + "<script>spinWheel()</script>", height=400)
+    categories = {
+        "Progress": ['first_pub', 'halfway', 'finisher', 'rule_breaker'],
+        "Challenges": ['dance_master', 'karaoke_king', 'silent_warrior', 'phone_free'],
+        "Legendary": ['perfect_run', 'punishment_collector', 'speed_demon', 'golden_route']
+    }
+    
+    for category, achievement_ids in categories.items():
+        st.markdown(f"### {category}")
         
-        with st.spinner("Spinning..."):
-            time.sleep(4)
+        # Show earned achievements
+        earned_in_category = [ach for ach in achievement_ids if ach in earned_achievements]
+        for ach_id in earned_in_category:
+            ach = ACHIEVEMENTS[ach_id]
+            st.markdown(f"""
+                <div class="achievement">
+                    <h3>{ach['name']} ✨</h3>
+                    <p>{ach['desc']}</p>
+                    <small>+{ach['points']} points</small>
+                </div>
+            """, unsafe_allow_html=True)
         
-        punishment = random.choice(PUNISHMENTS)
-        
-        # Save punishment to database
-        participants_df, punishments_df = load_data()
-        participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
-        current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
-        
-        new_punishment = pd.DataFrame([{
-            'Time': datetime.now().strftime('%H:%M:%S'),
-            'Name': st.session_state.current_participant,
-            'Pub': current_pub,
-            'Punishment': punishment
-        }])
-        
-        punishments_df = pd.concat([punishments_df, new_punishment], ignore_index=True)
-        save_data(participants_df, punishments_df)
-        
-        st.snow()
-        st.success(f"Your punishment is: {punishment}")
-    else:
-        components.html(wheel_html, height=400)
+        # Show locked achievements
+        locked_in_category = [ach for ach in achievement_ids if ach not in earned_achievements]
+        for ach_id in locked_in_category:
+            ach = ACHIEVEMENTS[ach_id]
+            st.markdown(f"""
+                <div class="locked-achievement">
+                    <h3>🔒 {ach['name']}</h3>
+                    <p>{ach['desc']}</p>
+                    <small>+{ach['points']} points</small>
+                </div>
+            """, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()
 
 def show_leaderboard():
     """Display leaderboard"""
