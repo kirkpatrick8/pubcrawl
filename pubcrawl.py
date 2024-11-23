@@ -112,7 +112,7 @@ repo = g.get_repo(REPO_NAME)
 # Constants
 PUBS_DATA = {
     'name': [
-        "Lavery's", "The Points", "Sweet Afton", "Kelly's Cellars",
+        "Downstairs Lavery's", "The Points", "Sweet Afton", "Kelly's Cellars",
         "Whites Tavern", "The Deer's Head", "The John Hewitt", "Duke of York",
         "The Harp Bar", "The Dirty Onion", "Thirsty Goat", "Ulster Sports Club"
     ],
