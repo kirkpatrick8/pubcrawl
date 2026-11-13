@@ -5,8 +5,7 @@ from streamlit_folium import st_folium
 import random
 import time
 from datetime import datetime
-from github import Github
-from github import GithubException
+from github import Github, GithubException
 import io
 import streamlit.components.v1 as components
 
@@ -43,6 +42,7 @@ st.markdown("""
         height: 300px;
         margin: 50px auto;
         position: relative;
+        perspective: 1000px;
     }
 
     .wheel {
@@ -52,7 +52,9 @@ st.markdown("""
         position: relative;
         border: 10px solid gold;
         box-shadow: 0 0 0 10px #333;
+        transform: rotate(0deg);
         transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        transform-style: preserve-3d;
     }
 
     .wheel-section {
@@ -62,15 +64,25 @@ st.markdown("""
         background: var(--color);
         transform-origin: 100% 100%;
         clip-path: polygon(100% 50%, 100% 100%, 0 100%, 0 50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .wheel-text {
+        position: absolute;
+        left: 30%;
+        top: 30%;
+        transform: rotate(-60deg);
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px black;
+        white-space: nowrap;
     }
 
     .wheel.spinning {
         animation: spin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(3600deg); }
     }
 
     .wheel-pointer {
@@ -157,72 +169,87 @@ ACHIEVEMENTS = {
     'speed_demon': {'name': 'Speed Demon', 'desc': 'Complete route in under 3 hours', 'points': 400},
     'golden_route': {'name': 'Golden Route', 'desc': 'Visit pubs in perfect order without skipping', 'points': 50}
 }
-# Data management functions
+
+# Data management functions with specific exception handling and retry logic
 @st.cache_data(ttl=10)  # Cache for 10 seconds
 def load_data():
-    """Load data from GitHub"""
+    """Load data from GitHub securely"""
+    participants_file = "participants.csv"
+    punishments_file = "punishments.csv"
+    
     try:
-        participants_file = "participants.csv"
-        punishments_file = "punishments.csv"
-        
-        try:
-            content = repo.get_contents(participants_file, ref=BRANCH_NAME)
-            participants_df = pd.read_csv(io.StringIO(content.decoded_content.decode()))
-        except:
+        content = repo.get_contents(participants_file, ref=BRANCH_NAME)
+        participants_df = pd.read_csv(io.StringIO(content.decoded_content.decode()))
+    except GithubException as e:
+        if e.status == 404:
             participants_df = pd.DataFrame(columns=['Name', 'CurrentPub', 'CompletedPubs', 'Points', 'Achievements', 'StartTime'])
-        
-        try:
-            content = repo.get_contents(punishments_file, ref=BRANCH_NAME)
-            punishments_df = pd.read_csv(io.StringIO(content.decoded_content.decode()))
-        except:
-            punishments_df = pd.DataFrame(columns=['Time', 'Name', 'Pub', 'Punishment'])
-        
-        return participants_df, punishments_df
-    except Exception as e:
-        st.sidebar.error(f"Error loading data: {e}")
-        return pd.DataFrame(columns=['Name', 'CurrentPub', 'CompletedPubs', 'Points', 'Achievements', 'StartTime']), \
-               pd.DataFrame(columns=['Time', 'Name', 'Pub', 'Punishment'])
-
-def save_data(participants_df, punishments_df):
-    """Save data to GitHub"""
+        else:
+            st.sidebar.error(f"GitHub error loading participants: {e}")
+            participants_df = pd.DataFrame(columns=['Name', 'CurrentPub', 'CompletedPubs', 'Points', 'Achievements', 'StartTime'])
+    
     try:
-        # Save participants
+        content = repo.get_contents(punishments_file, ref=BRANCH_NAME)
+        punishments_df = pd.read_csv(io.StringIO(content.decoded_content.decode()))
+    except GithubException as e:
+        if e.status == 404:
+            punishments_df = pd.DataFrame(columns=['Time', 'Name', 'Pub', 'Punishment'])
+        else:
+            st.sidebar.error(f"GitHub error loading punishments: {e}")
+            punishments_df = pd.DataFrame(columns=['Time', 'Name', 'Pub', 'Punishment'])
+            
+    return participants_df, punishments_df
+
+def save_data(participants_df, punishments_df, max_retries=3):
+    """Save data to GitHub with retry logic to handle concurrent SHA conflicts"""
+    for attempt in range(max_retries):
         try:
-            contents = repo.get_contents("participants.csv", ref=BRANCH_NAME)
-            repo.update_file(
-                "participants.csv",
-                f"Update participants - {datetime.now()}",
-                participants_df.to_csv(index=False),
-                contents.sha,
-                branch=BRANCH_NAME
-            )
-        except:
-            repo.create_file(
-                "participants.csv",
-                f"Create participants file - {datetime.now()}",
-                participants_df.to_csv(index=False),
-                branch=BRANCH_NAME
-            )
+            # Save participants
+            try:
+                contents = repo.get_contents("participants.csv", ref=BRANCH_NAME)
+                repo.update_file(
+                    "participants.csv",
+                    f"Update participants - {datetime.now()}",
+                    participants_df.to_csv(index=False),
+                    contents.sha,
+                    branch=BRANCH_NAME
+                )
+            except GithubException as e:
+                if e.status == 404:
+                    repo.create_file(
+                        "participants.csv",
+                        f"Create participants file - {datetime.now()}",
+                        participants_df.to_csv(index=False),
+                        branch=BRANCH_NAME
+                    )
+                else:
+                    raise e
         
-        # Save punishments
-        try:
-            contents = repo.get_contents("punishments.csv", ref=BRANCH_NAME)
-            repo.update_file(
-                "punishments.csv",
-                f"Update punishments - {datetime.now()}",
-                punishments_df.to_csv(index=False),
-                contents.sha,
-                branch=BRANCH_NAME
-            )
-        except:
-            repo.create_file(
-                "punishments.csv",
-                f"Create punishments file - {datetime.now()}",
-                punishments_df.to_csv(index=False),
-                branch=BRANCH_NAME
-            )
-    except Exception as e:
-        st.sidebar.error(f"Error saving data: {e}")
+            # Save punishments
+            try:
+                contents = repo.get_contents("punishments.csv", ref=BRANCH_NAME)
+                repo.update_file(
+                    "punishments.csv",
+                    f"Update punishments - {datetime.now()}",
+                    punishments_df.to_csv(index=False),
+                    contents.sha,
+                    branch=BRANCH_NAME
+                )
+            except GithubException as e:
+                if e.status == 404:
+                    repo.create_file(
+                        "punishments.csv",
+                        f"Create punishments file - {datetime.now()}",
+                        punishments_df.to_csv(index=False),
+                        branch=BRANCH_NAME
+                    )
+                else:
+                    raise e
+            break  # Success, exit retry loop
+        except Exception as e:
+            if attempt == max_retries - 1:
+                st.sidebar.error(f"Error saving data after retries: {e}")
+            else:
+                time.sleep(1)
 
 def auto_refresh():
     """Helper function for refreshing the app"""
@@ -264,21 +291,17 @@ def check_achievements(name, participants_df, punishments_df=None):
     if punishments_df is not None:
         user_punishments = punishments_df[punishments_df['Name'] == name]
         
-        # Rule breaker achievement
         if len(user_punishments) >= 3:
             award_achievement('rule_breaker')
         
-        # Dance Master achievement
-        dance_count = len(user_punishments[user_punishments['Punishment'].str.contains('Irish dance', case=False)])
+        dance_count = len(user_punishments[user_punishments['Punishment'].str.contains('Irish dance', case=False, na=False)])
         if dance_count >= 2:
             award_achievement('dance_master')
         
-        # Karaoke King/Queen achievement
-        carol_count = len(user_punishments[user_punishments['Punishment'].str.contains('Christmas carol', case=False)])
+        carol_count = len(user_punishments[user_punishments['Punishment'].str.contains('Christmas carol', case=False, na=False)])
         if carol_count >= 2:
             award_achievement('karaoke_king')
         
-        # Silent Warrior & Phone Free achievements
         if completed_count > 2:
             no_swearing_punishments = user_punishments[user_punishments['Pub'] == PUBS_DATA['name'][2]]
             if len(no_swearing_punishments) == 0:
@@ -289,15 +312,12 @@ def check_achievements(name, participants_df, punishments_df=None):
             if len(no_phone_punishments) == 0:
                 award_achievement('phone_free')
         
-        # Perfect Run achievement
         if completed_count == 12 and len(user_punishments) == 0:
             award_achievement('perfect_run')
         
-        # Punishment Collector achievement
         if len(set(user_punishments['Punishment'])) == len(PUNISHMENTS):
             award_achievement('punishment_collector')
     
-    # Speed Demon achievement
     if completed_count == 12 and not pd.isna(participant['StartTime']):
         start_time = datetime.fromisoformat(participant['StartTime'])
         end_time = datetime.now()
@@ -305,13 +325,11 @@ def check_achievements(name, participants_df, punishments_df=None):
         if total_hours <= 3:
             award_achievement('speed_demon')
     
-    # Golden Route achievement
     if completed_count > 0:
         expected_order = PUBS_DATA['name'][:completed_count]
         if completed_pubs == expected_order:
             award_achievement('golden_route')
     
-    # Update achievements and points
     participants_df.loc[participants_df['Name'] == name, 'Achievements'] = ','.join(achievements) if achievements else ''
     if points_added > 0:
         participants_df.loc[participants_df['Name'] == name, 'Points'] += points_added
@@ -330,7 +348,6 @@ def name_entry_modal():
             if name:
                 st.session_state.current_participant = name
                 
-                # Initialize participant data if needed
                 participants_df, punishments_df = load_data()
                 if name not in participants_df['Name'].values:
                     new_participant = pd.DataFrame([{
@@ -345,6 +362,7 @@ def name_entry_modal():
                     save_data(participants_df, punishments_df)
                 
                 auto_refresh()
+
 def show_map():
     """Display interactive map"""
     st.header("🗺️ Pub Route Map")
@@ -367,7 +385,6 @@ def show_map():
             PUBS_DATA['latitude'],
             PUBS_DATA['longitude']
         )):
-            # Determine marker style
             if name in completed_pubs:
                 color = 'green'
                 icon = 'check'
@@ -378,18 +395,16 @@ def show_map():
                 color = 'red'
                 icon = 'info'
             
-            # Create popup content
             popup_text = f"""
                 <div style='width:200px'>
                     <h4>{i+1}. {name}</h4>
                     <b>Rule:</b> {PUBS_DATA['rules'][i]}<br>
                     <b>Status:</b> {'✅ Completed' if name in completed_pubs else 
-                                  '🎯 Current' if i == int(participant['CurrentPub']) else 
-                                  '⏳ Pending'}
+                                    '🎯 Current' if i == int(participant['CurrentPub']) else 
+                                    '⏳ Pending'}
                 </div>
             """
             
-            # Add marker
             folium.Marker(
                 [lat, lon],
                 popup=folium.Popup(popup_text, max_width=300),
@@ -397,7 +412,6 @@ def show_map():
                 icon=folium.Icon(color=color, icon=icon, prefix='fa')
             ).add_to(m)
             
-            # Connect pubs with line
             if i > 0:
                 folium.PolyLine(
                     locations=[
@@ -410,198 +424,49 @@ def show_map():
                     dash_array='10'
                 ).add_to(m)
         
-        # Display map with fixed dimensions
-        st_folium(m, height=400, width=700)
+        # Display map with optimization for performance (no rerun loop)
+        st_folium(m, height=400, width=700, returned_objects=[])
         
     except Exception as e:
-        st.error("Error displaying map. Please refresh the page.")
+        st.error(f"Error displaying map: {e}")
 
 def show_punishment_wheel():
-    """Display smoothly spinning wheel with synchronized punishment selection"""
+    """Display punishment wheel and manage outcomes"""
     st.header("😈 Rule Breaker's Wheel")
     
     wheel_html = """
     <div class="wheel-container">
         <div class="wheel-pointer"></div>
         <div id="wheel" class="wheel">
-            <div class="wheel-section" data-punishment="Buy Mark a Drink" style="--color: #FF4B4B; transform: rotate(0deg);">
-                <span class="wheel-text">Buy Drink</span>
-            </div>
-            <div class="wheel-section" data-punishment="Irish dance for 30 seconds" style="--color: #4CAF50; transform: rotate(30deg);">
-                <span class="wheel-text">Dance</span>
-            </div>
-            <div class="wheel-section" data-punishment="Tell an embarrassing story" style="--color: #2196F3; transform: rotate(60deg);">
-                <span class="wheel-text">Story</span>
-            </div>
-            <div class="wheel-section" data-punishment="Down your drink" style="--color: #FFC107; transform: rotate(90deg);">
-                <span class="wheel-text">Down It</span>
-            </div>
-            <div class="wheel-section" data-punishment="Add a shot to your next drink" style="--color: #9C27B0; transform: rotate(120deg);">
-                <span class="wheel-text">Add Shot</span>
-            </div>
-            <div class="wheel-section" data-punishment="Sing a Christmas carol" style="--color: #FF9800; transform: rotate(150deg);">
-                <span class="wheel-text">Carol</span>
-            </div>
-            <div class="wheel-section" data-punishment="Switch drinks with someone" style="--color: #E91E63; transform: rotate(180deg);">
-                <span class="wheel-text">Switch</span>
-            </div>
-            <div class="wheel-section" data-punishment="No phone for next 2 pubs" style="--color: #00BCD4; transform: rotate(210deg);">
-                <span class="wheel-text">No Phone</span>
-            </div>
-            <div class="wheel-section" data-punishment="Wear your jumper inside out" style="--color: #8BC34A; transform: rotate(240deg);">
-                <span class="wheel-text">Jumper</span>
-            </div>
-            <div class="wheel-section" data-punishment="Give someone your drink" style="--color: #FF5722; transform: rotate(270deg);">
-                <span class="wheel-text">Give Drink</span>
-            </div>
-            <div class="wheel-section" data-punishment="Talk in an accent for 10 mins" style="--color: #3F51B5; transform: rotate(300deg);">
-                <span class="wheel-text">Accent</span>
-            </div>
-            <div class="wheel-section" data-punishment="Do 10 jumping jacks" style="--color: #009688; transform: rotate(330deg);">
-                <span class="wheel-text">Jumps</span>
-            </div>
+            <div class="wheel-section" style="--color: #FF4B4B; transform: rotate(0deg);"><span class="wheel-text">Buy Drink</span></div>
+            <div class="wheel-section" style="--color: #4CAF50; transform: rotate(30deg);"><span class="wheel-text">Dance</span></div>
+            <div class="wheel-section" style="--color: #2196F3; transform: rotate(60deg);"><span class="wheel-text">Story</span></div>
+            <div class="wheel-section" style="--color: #FFC107; transform: rotate(90deg);"><span class="wheel-text">Down It</span></div>
+            <div class="wheel-section" style="--color: #9C27B0; transform: rotate(120deg);"><span class="wheel-text">Add Shot</span></div>
+            <div class="wheel-section" style="--color: #FF9800; transform: rotate(150deg);"><span class="wheel-text">Carol</span></div>
+            <div class="wheel-section" style="--color: #E91E63; transform: rotate(180deg);"><span class="wheel-text">Switch</span></div>
+            <div class="wheel-section" style="--color: #00BCD4; transform: rotate(210deg);"><span class="wheel-text">No Phone</span></div>
+            <div class="wheel-section" style="--color: #8BC34A; transform: rotate(240deg);"><span class="wheel-text">Jumper</span></div>
+            <div class="wheel-section" style="--color: #FF5722; transform: rotate(270deg);"><span class="wheel-text">Give Drink</span></div>
+            <div class="wheel-section" style="--color: #3F51B5; transform: rotate(300deg);"><span class="wheel-text">Accent</span></div>
+            <div class="wheel-section" style="--color: #009688; transform: rotate(330deg);"><span class="wheel-text">Jumps</span></div>
             <div class="wheel-center"></div>
         </div>
     </div>
-
-    <style>
-    .wheel-container {
-        width: 300px;
-        height: 300px;
-        margin: 50px auto;
-        position: relative;
-        perspective: 1000px;
-    }
-
-    .wheel {
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        position: relative;
-        border: 10px solid gold;
-        box-shadow: 0 0 0 10px #333;
-        transform: rotate(0deg);
-        transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-        transform-style: preserve-3d;
-    }
-
-    .wheel-section {
-        position: absolute;
-        width: 50%;
-        height: 50%;
-        background: var(--color);
-        transform-origin: 100% 100%;
-        clip-path: polygon(100% 50%, 100% 100%, 0 100%, 0 50%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .wheel-text {
-        position: absolute;
-        left: 30%;
-        top: 30%;
-        transform: rotate(-60deg);
-        color: white;
-        font-size: 12px;
-        font-weight: bold;
-        text-shadow: 1px 1px 2px black;
-        white-space: nowrap;
-    }
-
-    .wheel-pointer {
-        position: absolute;
-        top: -20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 20px;
-        height: 40px;
-        background: red;
-        clip-path: polygon(50% 100%, 0 0, 100% 0);
-        z-index: 2;
-    }
-
-    .wheel-center {
-        position: absolute;
-        width: 40px;
-        height: 40px;
-        background: gold;
-        border: 5px solid #333;
-        border-radius: 50%;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 1;
-    }
-
-    .wheel.spinning {
-        animation: spin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-    }
-
-    @keyframes blur {
-        0% { filter: blur(0); }
-        50% { filter: blur(2px); }
-        100% { filter: blur(0); }
-    }
-    </style>
-
-    <script>
-    let isSpinning = false;
-    let selectedPunishment = '';
-
-    function spinWheel() {
-        if (isSpinning) return;
-        
-        const wheel = document.getElementById('wheel');
-        isSpinning = true;
-
-        // Calculate random final position (30-degree increments for 12 sections)
-        const sectionAngle = 30;
-        const randomSection = Math.floor(Math.random() * 12);
-        const finalAngle = randomSection * sectionAngle;
-        
-        // Add multiple full rotations plus the final position
-        const rotations = 5;
-        const totalDegrees = (rotations * 360) + finalAngle;
-        
-        // Apply smooth spinning animation
-        wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-        wheel.style.transform = `rotate(${totalDegrees}deg)`;
-
-        // Get the selected punishment
-        setTimeout(() => {
-            const sections = document.querySelectorAll('.wheel-section');
-            const selectedSection = sections[11 - randomSection];
-            selectedPunishment = selectedSection.dataset.punishment;
-            
-            // Store the selected punishment in a hidden input
-            const punishmentInput = document.createElement('input');
-            punishmentInput.type = 'hidden';
-            punishmentInput.id = 'selectedPunishment';
-            punishmentInput.value = selectedPunishment;
-            document.body.appendChild(punishmentInput);
-            
-            isSpinning = false;
-        }, 4000);
-    }
-    </script>
     """
 
     if st.button("Spin the Wheel", type="primary", key="spin_button"):
-        # Show spinning wheel and initiate spin
-        components.html(wheel_html + "<script>spinWheel()</script>", height=400)
+        components.html(wheel_html + "<script>document.getElementById('wheel').classList.add('spinning');</script>", height=350)
         
-        # Wait for animation
-        with st.spinner("Spinning..."):
-            time.sleep(4)  # Match the animation duration
+        with st.spinner("Spinning the wheel..."):
+            time.sleep(4)
         
-        # Get punishment and save to database
         participants_df, punishments_df = load_data()
         participant = participants_df[participants_df['Name'] == st.session_state.current_participant].iloc[0]
-        current_pub = PUBS_DATA['name'][int(participant['CurrentPub'])]
+        current_pub_idx = int(participant['CurrentPub'])
+        current_pub = PUBS_DATA['name'][current_pub_idx] if current_pub_idx < 12 else PUBS_DATA['name'][-1]
         
-        # Select punishment based on wheel position
-        punishment = random.choice(PUNISHMENTS)  # Fallback in case of issues
+        punishment = random.choice(PUNISHMENTS)
         
         new_punishment = pd.DataFrame([{
             'Time': datetime.now().strftime('%H:%M:%S'),
@@ -614,16 +479,14 @@ def show_punishment_wheel():
         save_data(participants_df, punishments_df)
         
         st.snow()
-        st.success(f"Your punishment is: {punishment}")
+        st.success(f"🎉 Your punishment is: **{punishment}**")
     else:
-        # Show static wheel
-        components.html(wheel_html, height=400)
+        components.html(wheel_html, height=350)
 
 def show_progress(name):
     """Show progress for current participant"""
-    participants_df, _ = load_data()
+    participants_df, punishments_df = load_data()
     
-    # Check if participant exists, if not create new entry
     if len(participants_df[participants_df['Name'] == name]) == 0:
         new_participant = pd.DataFrame([{
             'Name': name,
@@ -634,13 +497,12 @@ def show_progress(name):
             'StartTime': datetime.now().isoformat()
         }])
         participants_df = pd.concat([participants_df, new_participant], ignore_index=True)
-        save_data(participants_df, load_data()[1])
+        save_data(participants_df, punishments_df)
     
     participant = participants_df[participants_df['Name'] == name].iloc[0]
     
     st.header(f"Progress Tracker for {name}")
     
-    # Progress calculations
     completed_pubs = [] if pd.isna(participant['CompletedPubs']) else participant['CompletedPubs'].split(',')
     if completed_pubs == ['']:
         completed_pubs = []
@@ -648,7 +510,6 @@ def show_progress(name):
     progress = len(completed_pubs)
     current_pub = int(participant['CurrentPub'])
     
-    # Display progress
     st.progress(progress/12)
     
     col1, col2, col3 = st.columns(3)
@@ -659,7 +520,6 @@ def show_progress(name):
     with col3:
         st.metric("Points", int(participant['Points']))
     
-    # Current pub information
     if current_pub < 12:
         current_pub_name = PUBS_DATA['name'][current_pub]
         current_rule = PUBS_DATA['rules'][current_pub]
@@ -668,27 +528,23 @@ def show_progress(name):
         st.info(f"Rule: {current_rule}")
         
         if st.button("Mark Current Pub as Complete", type="primary"):
-            # Update completed pubs
             completed_pubs.append(current_pub_name)
             participant_idx = participants_df[participants_df['Name'] == name].index[0]
             
-            # Update participant data
             participants_df.loc[participant_idx, 'CompletedPubs'] = ','.join(completed_pubs)
             participants_df.loc[participant_idx, 'CurrentPub'] = current_pub + 1
             participants_df.loc[participant_idx, 'Points'] += 100
             
-            # Check achievements
-            participants_df = check_achievements(name, participants_df)
+            participants_df = check_achievements(name, participants_df, punishments_df)
             
-            # Save and refresh
-            save_data(participants_df, load_data()[1])
+            save_data(participants_df, punishments_df)
             auto_refresh()
     else:
         st.success("🎉 Congratulations! You've completed the Belfast 12 Pubs of Christmas! 🎉")
 
 def show_achievements(name):
     """Display achievements"""
-    participants_df = load_data()[0]
+    participants_df, _ = load_data()
     participant = participants_df[participants_df['Name'] == name].iloc[0]
     earned_achievements = [] if pd.isna(participant['Achievements']) else participant['Achievements'].split(',')
     if earned_achievements == ['']:
@@ -705,7 +561,6 @@ def show_achievements(name):
     for category, achievement_ids in categories.items():
         st.markdown(f"### {category}")
         
-        # Show earned achievements
         earned_in_category = [ach for ach in achievement_ids if ach in earned_achievements]
         for ach_id in earned_in_category:
             ach = ACHIEVEMENTS[ach_id]
@@ -717,7 +572,6 @@ def show_achievements(name):
                 </div>
             """, unsafe_allow_html=True)
         
-        # Show locked achievements
         locked_in_category = [ach for ach in achievement_ids if ach not in earned_achievements]
         for ach_id in locked_in_category:
             ach = ACHIEVEMENTS[ach_id]
@@ -736,7 +590,6 @@ def show_leaderboard():
     participants_df, punishments_df = load_data()
     
     if not participants_df.empty:
-        # Prepare leaderboard data
         display_data = []
         for _, row in participants_df.iterrows():
             completed_pubs = [] if pd.isna(row['CompletedPubs']) else row['CompletedPubs'].split(',')
@@ -748,7 +601,7 @@ def show_leaderboard():
                 achievements = []
             
             current_pub = int(row['CurrentPub'])
-            current_pub_name = PUBS_DATA['name'][current_pub] if current_pub < 12 else 'Finished!'
+            current_pub_name = PUBS_DATA['name'][current_pub] if current_pub < 12 else 'Finished! 🏆'
             
             display_data.append({
                 'Name': row['Name'],
@@ -773,11 +626,9 @@ def main():
     name_entry_modal()
     
     if st.session_state.current_participant:
-        # Add refresh button in sidebar
         if st.sidebar.button("Refresh Data"):
             auto_refresh()
         
-        # Main navigation
         tabs = st.tabs([
             "👥 Leaderboard",
             "📊 My Progress",
