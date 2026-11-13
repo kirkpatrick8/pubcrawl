@@ -29,24 +29,40 @@ st.set_page_config(
 APP_DIR = Path(__file__).resolve().parent
 
 
+# High-contrast CSS inlined so the app works even if theme.css is missing on Cloud
+INLINE_THEME_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&family=Source+Sans+3:wght@500;700;800&display=swap');
+html,body,[class*="css"],.stMarkdown,p,label,span{font-family:'Source Sans 3','Segoe UI',sans-serif!important;color:#140c08!important;}
+.stApp{background:linear-gradient(180deg,#ffe7c2 0%,#ffd9a8 40%,#fff0dc 100%);color:#140c08;}
+h1,h2,h3,h4,.stMarkdown h1,.stMarkdown h2,.stMarkdown h3{font-family:Fraunces,Georgia,serif!important;color:#140c08!important;font-weight:800!important;}
+.stCaption,[data-testid="stCaptionContainer"]{color:#3d2a1f!important;font-weight:600!important;}
+.brand-hero{text-align:center;padding:0.8rem 0.4rem 0.3rem;}
+.brand-hero .brand{font-family:Fraunces,Georgia,serif;font-size:clamp(1.55rem,6vw,2.4rem);font-weight:800;color:#b01030;margin:0;line-height:1.1;}
+.brand-hero .tagline{color:#3d2a1f;font-size:1.05rem;font-weight:700;margin:0.35rem 0 0;}
+.metric-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:0.55rem;margin:0.7rem 0 1rem;}
+.metric-card{background:#fff;border:3px solid #8b5a2b;border-radius:12px;padding:0.75rem 0.4rem;text-align:center;}
+.metric-card .val{font-family:Fraunces,Georgia,serif;font-size:1.6rem;font-weight:800;color:#b01030;line-height:1.1;}
+.metric-card .lbl{font-size:0.75rem;font-weight:800;text-transform:uppercase;color:#3d2a1f;margin-top:0.2rem;}
+.pub-card{background:#fff;border:3px solid #8b5a2b;border-left:8px solid #b01030;border-radius:12px;padding:1rem;margin:0.7rem 0 1rem;}
+.pub-card h3{margin:0 0 0.35rem!important;color:#140c08!important;font-size:1.2rem!important;}
+.pub-card p{margin:0;color:#3d2a1f;font-size:1.05rem;font-weight:600;}
+.achievement{padding:0.85rem 1rem;margin:0.45rem 0;border-radius:10px;background:#0a5c42;color:#fff!important;font-weight:800;border:3px solid #063d2c;}
+.locked-achievement{padding:0.85rem 1rem;margin:0.45rem 0;border-radius:10px;background:#fff;border:3px solid #5c4033;color:#140c08!important;font-weight:700;}
+iframe[title="streamlit_folium.st_folium"]{width:100%!important;max-width:100%!important;}
+.stButton>button{border-radius:10px!important;font-weight:800!important;font-size:1.05rem!important;}
+.stButton>button[kind="primary"],.stButton>button[data-testid="baseButton-primary"]{background:#b01030!important;color:#fff!important;border:3px solid #7a0b22!important;}
+section[data-testid="stSidebar"]{background:#ffe7c2;border-right:3px solid #8b5a2b;}
+div[data-baseweb="tab-list"] button{font-weight:800!important;color:#140c08!important;}
+div[data-baseweb="tab-list"] button[aria-selected="true"]{color:#b01030!important;}
+@media (max-width:640px){.block-container{padding-top:0.7rem!important;padding-left:0.65rem!important;padding-right:0.65rem!important;}}
+"""
+
+
 def inject_theme() -> None:
     css_path = APP_DIR / "theme.css"
-    if css_path.exists():
-        css = css_path.read_text(encoding="utf-8")
-    else:
-        # Minimal fallback if theme.css was not copied
-        css = (
-            ".stApp{background:#fff8f0;color:#1a0f0a;}"
-            ".brand-hero{text-align:center;padding:1rem;}"
-            ".brand-hero .brand{font-size:1.8rem;font-weight:800;color:#c41e3a;}"
-            ".metric-card,.pub-card{background:#fff;border:2px solid #e8c9a8;"
-            "border-radius:14px;padding:0.85rem;margin:0.5rem 0;}"
-            ".achievement{background:#0b6e4f;color:#fff;padding:0.85rem;"
-            "border-radius:12px;margin:0.5rem 0;font-weight:700;}"
-            ".locked-achievement{background:#f3e9df;border:2px dashed #c4a882;"
-            "color:#7a5c45;padding:0.85rem;border-radius:12px;margin:0.5rem 0;}"
-        )
-    st.markdown("<style>\n" + css + "\n</style>", unsafe_allow_html=True)
+    css = css_path.read_text(encoding="utf-8") if css_path.exists() else INLINE_THEME_CSS
+    # Always append inline rules so contrast stays strong even if an old theme.css is present
+    st.markdown("<style>\n" + css + "\n" + INLINE_THEME_CSS + "\n</style>", unsafe_allow_html=True)
 
 
 inject_theme()
@@ -331,7 +347,8 @@ def _wheel_colors(n: int) -> list:
     return colors
 
 
-def build_wheel_html(punishments: list, spin_deg=None) -> str:
+def build_wheel_html(punishments: list, spin_deg=None, result_label: str = "") -> str:
+    """Labeled conic wheel. When spin_deg is set, JS animates 0 -> target (real spin)."""
     n = len(punishments)
     colors = _wheel_colors(n)
     seg = 360.0 / n
@@ -345,57 +362,70 @@ def build_wheel_html(punishments: list, spin_deg=None) -> str:
     labels_html = []
     for i, label in enumerate(punishments):
         mid = i * seg + seg / 2.0
-        short = label if len(label) <= 22 else label[:20] + "..."
+        short = label if len(label) <= 18 else label[:16] + "..."
         safe = html.escape(short)
         labels_html.append(
-            '<div class="seg-label" style="transform: rotate(%.3fdeg) translateY(-118px) rotate(90deg);">%s</div>'
+            '<div class="seg-label" style="transform:rotate(%.3fdeg) translateY(-145px) rotate(90deg);">%s</div>'
             % (mid, safe)
         )
+    labels_joined = "".join(labels_html)
+    result_safe = html.escape(result_label) if result_label else ""
 
+    # JS starts at 0deg then transitions to target — Streamlit remount alone does not animate
     if spin_deg is None:
-        transform = "rotate(0deg)"
-        transition = "none"
+        script = ""
+        result_block = ""
     else:
-        transform = "rotate(%.2fdeg)" % spin_deg
-        transition = "transform 4s cubic-bezier(0.12, 0.75, 0.08, 1)"
+        script = (
+            "<script>(function(){var w=document.getElementById('wheel');"
+            "var r=document.getElementById('result');"
+            "if(!w)return;"
+            "w.style.transition='none';"
+            "w.style.transform='rotate(0deg)';"
+            "requestAnimationFrame(function(){requestAnimationFrame(function(){"
+            "w.style.transition='transform 3.2s cubic-bezier(0.12,0.75,0.08,1)';"
+            "w.style.transform='rotate(%.2fdeg)';"
+            "});});"
+            "setTimeout(function(){if(r){r.style.opacity='1';}},3300);"
+            "})();</script>"
+        ) % spin_deg
+        result_block = (
+            "<div id='result' style='opacity:0;transition:opacity 0.3s;margin:10px auto 0;"
+            "max-width:340px;padding:12px 14px;background:#b01030;color:#fff;font-weight:800;"
+            "font-size:1.05rem;border-radius:10px;border:3px solid #7a0b22;text-align:center;'>"
+            "Landed on: %s</div>"
+        ) % result_safe
 
-    labels_joined = "\n".join(labels_html)
-
-    # Built without a giant Python triple-quoted block (avoids paste truncation bugs)
     parts = [
         "<!DOCTYPE html><html><head><meta charset='utf-8'/>",
         "<style>",
-        "body{margin:0;background:transparent;font-family:system-ui,sans-serif;}",
-        ".wrap{position:relative;width:300px;height:300px;margin:28px auto 8px;}",
-        ".pointer{position:absolute;top:-18px;left:50%;transform:translateX(-50%);",
-        "width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;",
-        "border-top:28px solid #c41e3a;z-index:5;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.25));}",
-        ".pointer::after{content:'';position:absolute;top:-32px;left:-6px;width:12px;height:12px;",
-        "background:#d4a017;border:2px solid #1a0f0a;border-radius:50%;}",
-        ".wheel{width:100%;height:100%;border-radius:50%;border:8px solid #1a0f0a;",
-        "box-shadow:0 8px 24px rgba(26,15,10,0.25),inset 0 0 0 4px #fff8f0;",
-        "background:conic-gradient(from -90deg, ",
+        "body{margin:0;background:transparent;font-family:'Segoe UI',system-ui,sans-serif;}",
+        ".wrap{position:relative;width:360px;height:360px;max-width:92vw;margin:24px auto 6px;}",
+        ".pointer{position:absolute;top:-22px;left:50%;transform:translateX(-50%);z-index:6;",
+        "width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;",
+        "border-top:34px solid #b01030;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));}",
+        ".pointer:after{content:'';position:absolute;top:-38px;left:-7px;width:14px;height:14px;",
+        "background:#ffd700;border:3px solid #140c08;border-radius:50%;}",
+        ".wheel{width:100%;height:100%;border-radius:50%;border:10px solid #140c08;",
+        "box-shadow:0 10px 28px rgba(20,12,8,0.28),inset 0 0 0 5px #fff8f0;",
+        "background:conic-gradient(from -90deg,",
         gradient,
-        ");position:relative;transform:",
-        transform,
-        ";transition:",
-        transition,
-        ";}",
+        ");position:relative;transform:rotate(0deg);}",
         ".hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);",
-        "width:46px;height:46px;border-radius:50%;",
+        "width:52px;height:52px;border-radius:50%;z-index:3;",
         "background:radial-gradient(circle at 35% 30%,#fff3c4,#d4a017 55%,#8a6a0a);",
-        "border:3px solid #1a0f0a;z-index:3;}",
-        ".seg-label{position:absolute;top:50%;left:50%;width:110px;margin-left:-55px;margin-top:-8px;",
-        "font-size:9.5px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.75);",
-        "text-align:center;line-height:1.1;pointer-events:none;white-space:nowrap;",
-        "overflow:hidden;text-overflow:ellipsis;}",
-        ".legend{max-width:320px;margin:0 auto;font-size:11px;color:#5c4033;text-align:center;}",
+        "border:4px solid #140c08;}",
+        ".seg-label{position:absolute;top:50%;left:50%;width:120px;margin-left:-60px;margin-top:-9px;",
+        "font-size:11px;font-weight:800;color:#fff;text-shadow:0 0 3px #000,0 1px 2px #000;",
+        "text-align:center;line-height:1.05;pointer-events:none;}",
+        ".hint{text-align:center;color:#140c08;font-weight:700;font-size:13px;margin-top:4px;}",
         "</style></head><body>",
-        "<div class='wrap'><div class='pointer'></div>",
-        "<div class='wheel' id='wheel'>",
+        "<div class='wrap'><div class='pointer'></div><div class='wheel' id='wheel'>",
         labels_joined,
         "<div class='hub'></div></div></div>",
-        "<div class='legend'>Pointer at top — spin lands on the segment under the tip</div>",
+        "<div class='hint'>Pointer at top — watch it spin</div>",
+        result_block,
+        script,
         "</body></html>",
     ]
     return "".join(parts)
@@ -462,48 +492,53 @@ def show_map() -> None:
         completed = completed_list(participant["CompletedPubs"])
         current_idx = int(participant["CurrentPub"])
 
+        # OpenStreetMap — free, no API key (CartoDB positron now requires a key)
         m = folium.Map(
             location=[54.5988, -5.9295],
             zoom_start=14,
-            tiles="CartoDB positron",
+            tiles=None,
             control_scale=True,
         )
+        folium.TileLayer(
+            tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            attr="&copy; OpenStreetMap contributors",
+            name="OpenStreetMap",
+            max_zoom=19,
+        ).add_to(m)
+
         coords = list(zip(PUBS_DATA["latitude"], PUBS_DATA["longitude"]))
-        folium.PolyLine(coords, color="#c41e3a", weight=5, opacity=0.85, tooltip="Crawl route").add_to(m)
+        folium.PolyLine(coords, color="#b01030", weight=6, opacity=0.9, tooltip="Crawl route").add_to(m)
 
         for i, (name, lat, lon) in enumerate(
             zip(PUBS_DATA["name"], PUBS_DATA["latitude"], PUBS_DATA["longitude"])
         ):
             if name in completed:
-                color = "green"
+                label_bg = "#0a5c42"
             elif i == current_idx:
-                color = "orange"
+                label_bg = "#e67e00"
             else:
-                color = "red"
-            folium.CircleMarker(
-                location=[lat, lon],
-                radius=8,
-                color="#1a0f0a",
-                weight=2,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.95,
-                popup=folium.Popup(name, max_width=220),
-                tooltip=name,
-            ).add_to(m)
+                label_bg = "#b01030"
+
+            # One clear numbered pin per stop (no overlapping CircleMarker + label)
+            icon_html = (
+                '<div style="width:30px;height:30px;border-radius:50%%;'
+                "background:%s;color:#fff;border:3px solid #140c08;"
+                "font-weight:800;font-size:13px;line-height:24px;text-align:center;"
+                'box-shadow:0 2px 5px rgba(0,0,0,0.35);">%d</div>'
+            ) % (label_bg, i + 1)
             folium.Marker(
                 [lat, lon],
+                popup=folium.Popup("<b>%s</b>" % html.escape(name), max_width=240),
+                tooltip=name,
                 icon=folium.DivIcon(
-                    html=(
-                        '<div style="font-size:11px;font-weight:800;color:#1a0f0a;'
-                        "background:#fff;border:2px solid #1a0f0a;border-radius:10px;"
-                        'padding:1px 5px;transform:translate(-50%%,-120%%);">%d</div>'
-                    )
-                    % (i + 1)
+                    icon_size=(30, 30),
+                    icon_anchor=(15, 15),
+                    html=icon_html,
                 ),
             ).add_to(m)
 
-        st_folium(m, height=420, use_container_width=True, returned_objects=[])
+        m.fit_bounds(coords, padding=(28, 28))
+        st_folium(m, height=480, use_container_width=True, returned_objects=[])
         st.caption("Green = done · Orange = current · Red = upcoming · Line = walking route")
     except Exception as e:
         st.error("Map rendering error: %s" % e)
@@ -511,30 +546,23 @@ def show_map() -> None:
 
 def show_punishment_wheel() -> None:
     st.subheader("Rule Breaker's Punishment Wheel")
-    st.caption("Tap spin — the wheel animates and lands on a labeled segment.")
+    st.caption("Tap spin — the wheel really rotates, then shows what you landed on.")
 
     n = len(PUNISHMENTS)
     if "wheel_spin_deg" not in st.session_state:
         st.session_state.wheel_spin_deg = None
     if "wheel_result" not in st.session_state:
         st.session_state.wheel_result = None
+    if "wheel_token" not in st.session_state:
+        st.session_state.wheel_token = 0
 
     if st.button("Spin the Wheel!", type="primary", use_container_width=True):
         idx = random.randrange(n)
-        deg = spin_target_degrees(idx, n, extra_turns=random.randint(5, 7))
+        deg = spin_target_degrees(idx, n, extra_turns=random.randint(4, 6))
         st.session_state.wheel_spin_deg = deg
         st.session_state.wheel_result = PUNISHMENTS[idx]
-        st.session_state.wheel_pending_log = True
-
-    components.html(
-        build_wheel_html(PUNISHMENTS, spin_deg=st.session_state.wheel_spin_deg),
-        height=400,
-    )
-
-    if st.session_state.wheel_result and st.session_state.get("wheel_pending_log"):
-        with st.spinner("Wheel spinning..."):
-            time.sleep(4.1)
-        punishment = st.session_state.wheel_result
+        st.session_state.wheel_token = int(st.session_state.wheel_token) + 1
+        # Log immediately — no 4s sleep (that made the app feel stuck/slow)
         participants_df, punishments_df = load_data()
         row = participants_df[participants_df["Name"] == st.session_state.current_participant]
         curr = int(row.iloc[0]["CurrentPub"]) if not row.empty else 0
@@ -545,17 +573,29 @@ def show_punishment_wheel() -> None:
                     "Time": datetime.now().strftime("%H:%M:%S"),
                     "Name": st.session_state.current_participant,
                     "Pub": pub_name,
-                    "Punishment": punishment,
+                    "Punishment": PUNISHMENTS[idx],
                 }
             ]
         )
         punishments_df = pd.concat([punishments_df, new_p], ignore_index=True)
         save_data(participants_df, punishments_df)
-        st.session_state.wheel_pending_log = False
-        st.success("Punishment assigned: **%s**" % punishment)
-        st.balloons()
-    elif st.session_state.wheel_result:
-        st.info("Last spin: **%s**" % st.session_state.wheel_result)
+        st.cache_data.clear()
+
+    # Include token in HTML so Streamlit remounts the iframe and JS spin runs every click
+    wheel_html = build_wheel_html(
+        PUNISHMENTS,
+        spin_deg=st.session_state.wheel_spin_deg,
+        result_label=st.session_state.wheel_result or "",
+    )
+    wheel_html = wheel_html.replace(
+        "<body>",
+        "<body data-spin='%d'>" % int(st.session_state.wheel_token),
+        1,
+    )
+    components.html(wheel_html, height=520)
+
+    if st.session_state.wheel_result:
+        st.success("Punishment: **%s**" % st.session_state.wheel_result)
 
 
 def show_achievements(participant_row) -> None:
@@ -705,3 +745,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
