@@ -190,68 +190,70 @@ def auto_refresh() -> None:
     st.rerun()
 
 
-# 16 stops: start Three Sheets, finish Boombox; loops revisit Duke + Deer's Head
+# 16 stops: start Ronnie Drew's, finish Boombox (Union Street area)
+# Coords verified via Nominatim/OpenStreetMap + venue listings (Nov 2026)
 PUBS_DATA = {
     "name": [
-        "1. Three Sheets (Start)",
-        "2. The Crown Liquor Saloon",
-        "3. Kelly's Cellars",
-        "4. The Deer's Head",
+        "1. Ronnie Drew's (Start)",
+        "2. Beer tent (City Hall)",
+        "3. Sidebar",
+        "4. Beer tent (Custom House Square)",
         "5. Ulster Sports Club",
-        "6. Music Room",
-        "7. Whites Tavern",
-        "8. The John Hewitt",
-        "9. Duke of York",
-        "10. The Dirty Onion",
-        "11. Second Fiddle",
-        "12. The Harp Bar",
-        "13. The Spaniard",
-        "14. Duke of York (Loop)",
-        "15. The Deer's Head (Loop)",
-        "16. Boombox (Final!)",
+        "6. Common Market",
+        "7. Morning Star",
+        "8. Whites (White's Tavern)",
+        "9. Kelly's (Kelly's Cellars)",
+        "10. Harp Bar",
+        "11. Duke of York",
+        "12. Dirty Onion",
+        "13. Second Fiddle",
+        "14. Reporter",
+        "15. Maverick",
+        "16. Boombox (Finish!)",
     ],
     "latitude": [
-        54.592256,
-        54.595800,
-        54.599553,
-        54.601439,
-        54.599650,
-        54.599720,
-        54.600033,
-        54.601928,
-        54.601803,
-        54.601556,
-        54.601480,
-        54.602000,
-        54.602500,
-        54.601803,
-        54.601439,
-        54.604231,
+        54.596153,  # Ronnie Drew's, 79-83 May Street
+        54.596650,  # Beer tent near Belfast City Hall / Donegall Square
+        54.597250,  # Sidebar, 27 Chichester Street (beside Garrick)
+        54.601674,  # Beer tent at Custom House Square
+        54.600723,  # Ulster Sports Club, 96-98 High Street
+        54.602432,  # Common Market, Dunbar Street
+        54.599420,  # Morning Star, 17-19 Pottinger's Entry
+        54.600079,  # White's Tavern, 2-4 Winecellar Entry
+        54.599480,  # Kelly's Cellars, 30-32 Bank Street
+        54.602140,  # Harp Bar, 35 Hill Street
+        54.601778,  # Duke of York, 7-11 Commercial Court
+        54.601580,  # Dirty Onion, 3 Hill Street
+        54.601519,  # Second Fiddle, Cotton Court / Waring Street
+        54.604182,  # Reporter, 1 Union Street
+        54.604157,  # Maverick, 1 Union Street
+        54.604249,  # Boombox / Boom Box, Union Street area
     ],
     "longitude": [
-        -5.930879,
-        -5.931200,
-        -5.932236,
-        -5.930294,
-        -5.928900,
-        -5.928850,
-        -5.928497,
-        -5.928617,
-        -5.927442,
-        -5.926673,
-        -5.926550,
-        -5.927058,
-        -5.926200,
-        -5.927442,
-        -5.930294,
-        -5.931129,
+        -5.922826,
+        -5.930070,
+        -5.926750,
+        -5.923402,
+        -5.925105,
+        -5.926183,
+        -5.926277,
+        -5.928416,
+        -5.932203,
+        -5.927047,
+        -5.927324,
+        -5.926456,
+        -5.926166,
+        -5.931235,
+        -5.931242,
+        -5.931286,
     ],
     "rules": [
         "Christmas attire required & first toast",
+        "Outdoor cheers — no phones for the toast",
         "Speak in accents only",
+        "Power hour (fast drink)",
         "Different drink type required",
         "Left hand only challenge",
-        "Power hour (fast drink)",
         "Last names only",
         "Talk to a stranger",
         "Double parked",
@@ -260,8 +262,7 @@ PUBS_DATA = {
         "Switch drinks with buddy",
         "No phones allowed",
         "Compliment the bartender",
-        "Reverse toast (loop revisit)",
-        "Group hug photo (loop revisit)",
+        "Group photo before the finale",
         "Final destination celebration!",
     ],
 }
@@ -275,17 +276,17 @@ PUNISHMENTS = [
     "Sing a Christmas carol",
     "Switch drinks with someone",
     "No Punishment",
-    "Wear your jumper inside out",
+    "Buy Mark Another Drink",
     "Give someone your drink",
-    "Talk in an accent for 10 mins",
+    "Ask Karis What Happened? ",
     "Tell a fake back story to a random person",
 ]
 
 ACHIEVEMENTS = {
-    "first_pub": {"name": "First Timer", "desc": "Complete your first pub", "points": 100},
-    "halfway": {"name": "Halfway Hero", "desc": "Complete 8 pubs", "points": 250},
-    "finisher": {"name": "Challenge Champion", "desc": "Complete all 16 pubs", "points": 1500},
-    "loop_legend": {"name": "Loop Legend", "desc": "Revisit a loop stop", "points": 150},
+    "first_pub": {"name": "First Timer", "desc": "Complete your first stop", "points": 100},
+    "halfway": {"name": "Halfway Hero", "desc": "Complete 8 stops", "points": 250},
+    "finisher": {"name": "Challenge Champion", "desc": "Complete all 16 stops", "points": 1500},
+    "tent_twin": {"name": "Double Tent", "desc": "Complete both beer tent stops", "points": 150},
 }
 
 
@@ -305,11 +306,16 @@ def award_achievements(participants_df: pd.DataFrame, idx: int, completed: list)
     unlocked_now = []
     have = achievement_keys(participants_df.loc[idx, "Achievements"])
     progress = len(completed)
+    completed_joined = " | ".join(completed)
     checks = [
         ("first_pub", progress >= 1),
         ("halfway", progress >= 8),
         ("finisher", progress >= 16),
-        ("loop_legend", any("(Loop)" in p for p in completed)),
+        (
+            "tent_twin",
+            "Beer tent (City Hall)" in completed_joined
+            and "Beer tent (Custom House Square)" in completed_joined,
+        ),
     ]
     for key, ok in checks:
         if ok and key not in have:
@@ -447,8 +453,8 @@ def name_entry_modal() -> None:
     st.markdown(
         "<div class='brand-hero'>"
         "<p class='brand'>Mark's Belfast Christmas Crawl</p>"
-        "<p class='tagline'>16 pubs · Cathedral Quarter loop · "
-        "start at Three Sheets, finish at Boombox</p>"
+        "<p class='tagline'>16 stops · city centre to Union Street · "
+        "start at Ronnie Drew's, finish at Boombox</p>"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -481,7 +487,7 @@ def name_entry_modal() -> None:
 
 
 def show_map() -> None:
-    st.subheader("16-pub city centre & Cathedral Quarter loop")
+    st.subheader("16-stop city centre & Cathedral Quarter route")
     try:
         participants_df, _ = load_data()
         row = participants_df[participants_df["Name"] == st.session_state.current_participant]
@@ -661,7 +667,7 @@ def show_progress(name: str) -> None:
                 st.session_state["_flash_achievements"] = newly
             auto_refresh()
     else:
-        st.success("Absolute legend — you've finished the 16-pub loop at Boombox!")
+        st.success("Absolute legend — you've finished all 16 stops at Boombox!")
 
     if st.session_state.get("_flash_achievements"):
         for a in st.session_state.pop("_flash_achievements"):
@@ -700,7 +706,7 @@ def show_leaderboard() -> None:
 
 
 def show_route_list() -> None:
-    with st.expander("Full 16-pub order", expanded=False):
+    with st.expander("Full 16-stop order", expanded=False):
         for i, name in enumerate(PUBS_DATA["name"], start=1):
             st.write("%d. %s" % (i, name.replace("%d. " % i, "")))
 
@@ -731,7 +737,7 @@ def main() -> None:
             st.session_state.current_participant = None
             auto_refresh()
 
-    tabs = st.tabs(["Progress", "Loop Map", "Wheel", "Leaderboard"])
+    tabs = st.tabs(["Progress", "Route Map", "Wheel", "Leaderboard"])
     with tabs[0]:
         show_progress(st.session_state.current_participant)
         show_route_list()
@@ -745,4 +751,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
