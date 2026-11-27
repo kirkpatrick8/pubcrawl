@@ -1,0 +1,133 @@
+  line-height: 1.1;
+}
+.metric-card .lbl {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #3d2a1f;
+  margin-top: 0.2rem;
+}
+.pub-card {
+  background: #fff;
+  border: 3px solid #8b5a2b;
+  border-left: 8px solid #b01030;
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 0.7rem 0 1rem;
+}
+.pub-card h3 {
+  margin: 0 0 0.35rem !important;
+  color: #140c08 !important;
+  font-size: 1.2rem !important;
+}
+.pub-card p {
+  margin: 0;
+  color: #3d2a1f;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.achievement {
+  padding: 0.85rem 1rem;
+  margin: 0.45rem 0;
+  border-radius: 10px;
+  background: #0a5c42;
+  color: #fff !important;
+  font-weight: 800;
+  border: 3px solid #063d2c;
+}
+.locked-achievement {
+  padding: 0.85rem 1rem;
+  margin: 0.45rem 0;
+  border-radius: 10px;
+  background: #fff;
+  border: 3px solid #5c4033;
+  color: #140c08 !important;
+  font-weight: 700;
+}
+iframe[title="streamlit_folium.st_folium"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.stButton > button {
+  border-radius: 10px !important;
+  font-weight: 800 !important;
+  font-size: 1.05rem !important;
+}
+.stButton > button[kind="primary"],
+.stButton > button[data-testid="baseButton-primary"] {
+  background: #b01030 !important;
+  color: #fff !important;
+  border: 3px solid #7a0b22 !important;
+}
+section[data-testid="stSidebar"] {
+  background: #ffe7c2;
+  border-right: 3px solid #8b5a2b;
+}
+div[data-baseweb="tab-list"] button {
+  font-weight: 800 !important;
+  color: #140c08 !important;
+}
+div[data-baseweb="tab-list"] button[aria-selected="true"] {
+  color: #b01030 !important;
+}
+@media (max-width: 640px) {
+  .block-container {
+    padding-top: 0.7rem !important;
+    padding-left: 0.65rem !important;
+    padding-right: 0.65rem !important;
+  }
+}
+/* Floating elf mascot — parent-document overlay (injected via components.html) */
+#belfast-elf-mascot {
+  position: fixed !important;
+  z-index: 99999 !important;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: none !important;
+  border: 3px solid #b01030;
+  box-shadow: 0 6px 18px rgba(20, 12, 8, 0.35);
+  background: #ffe7c2 center / cover no-repeat;
+  left: 12vw;
+  top: 18vh;
+  opacity: 0.96;
+}
+#belfast-elf-mascot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  display: block;
+  border-radius: 50%;
+  pointer-events: none;
+}
+@keyframes belfast-elf-drift {
+  0%   { transform: translate(0, 0) rotate(-4deg); }
+  20%  { transform: translate(28vw, 12vh) rotate(6deg); }
+  40%  { transform: translate(55vw, 4vh) rotate(-3deg); }
+  60%  { transform: translate(62vw, 42vh) rotate(5deg); }
+  80%  { transform: translate(18vw, 55vh) rotate(-6deg); }
+  100% { transform: translate(0, 0) rotate(-4deg); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #belfast-elf-mascot.elf-drifting {
+    animation: belfast-elf-drift 28s ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #belfast-elf-mascot {
+    animation: none !important;
+    left: auto !important;
+    right: 16px !important;
+    top: auto !important;
+    bottom: 16px !important;
+    transform: none !important;
+  }
+}
+@media (max-width: 640px) {
+  #belfast-elf-mascot {
+    width: 68px;
+    height: 68px;
+  }
+}
