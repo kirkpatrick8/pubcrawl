@@ -28,13 +28,15 @@ st.set_page_config(
 )
 
 APP_DIR = Path(__file__).resolve().parent
-# Prefer compact float crop; accept .jpg or .jpeg (GitHub uploads often use .jpeg)
 def _resolve_elf_path() -> Path:
+    """Prefer polished PNG float; accept .jpg/.jpeg names Mark may upload."""
     candidates = (
+        APP_DIR / "assets" / "elf-mascot-float.png",
         APP_DIR / "assets" / "elf-mascot-float.jpg",
         APP_DIR / "assets" / "elf-mascot-float.jpeg",
         APP_DIR / "assets" / "elf-mascot.jpg",
         APP_DIR / "assets" / "elf-mascot.jpeg",
+        APP_DIR / "assets" / "elf-mascot.png",
     )
     for p in candidates:
         if p.exists():
@@ -42,38 +44,43 @@ def _resolve_elf_path() -> Path:
     return candidates[0]
 
 
-ELF_PATH = _resolve_elf_path()
 PARTICIPANTS_CSV = APP_DIR / "participants.csv"
 PUNISHMENTS_CSV = APP_DIR / "punishments.csv"
 PARTICIPANT_COLS = ["Name", "CurrentPub", "CompletedPubs", "Points", "Achievements", "StartTime"]
 PUNISHMENT_COLS = ["Time", "Name", "Pub", "Punishment"]
 
-# Fallback theme if theme.css is missing on Cloud
+# Fallback if theme.css is missing on Cloud (keep in sync with theme.css)
 INLINE_THEME_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&family=Source+Sans+3:wght@500;700;800&display=swap');
-html,body,[class*="css"],.stMarkdown,p,label,span{font-family:'Source Sans 3','Segoe UI',sans-serif!important;color:#140c08!important;}
-.stApp{background:linear-gradient(180deg,#ffe7c2 0%,#ffd9a8 40%,#fff0dc 100%);color:#140c08;}
-h1,h2,h3,h4,.stMarkdown h1,.stMarkdown h2,.stMarkdown h3{font-family:Fraunces,Georgia,serif!important;color:#140c08!important;font-weight:800!important;}
-.stCaption,[data-testid="stCaptionContainer"]{color:#3d2a1f!important;font-weight:600!important;}
-.brand-hero{text-align:center;padding:0.8rem 0.4rem 0.3rem;}
-.brand-hero .brand{font-family:Fraunces,Georgia,serif;font-size:clamp(1.55rem,6vw,2.4rem);font-weight:800;color:#b01030;margin:0;line-height:1.1;}
-.brand-hero .tagline{color:#3d2a1f;font-size:1.05rem;font-weight:700;margin:0.35rem 0 0;}
-.metric-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:0.55rem;margin:0.7rem 0 1rem;}
-.metric-card{background:#fff;border:3px solid #8b5a2b;border-radius:12px;padding:0.75rem 0.4rem;text-align:center;}
-.metric-card .val{font-family:Fraunces,Georgia,serif;font-size:1.6rem;font-weight:800;color:#b01030;line-height:1.1;}
-.metric-card .lbl{font-size:0.75rem;font-weight:800;text-transform:uppercase;color:#3d2a1f;margin-top:0.2rem;}
-.pub-card{background:#fff;border:3px solid #8b5a2b;border-left:8px solid #b01030;border-radius:12px;padding:1rem;margin:0.7rem 0 1rem;}
-.pub-card h3{margin:0 0 0.35rem!important;color:#140c08!important;font-size:1.2rem!important;}
-.pub-card p{margin:0;color:#3d2a1f;font-size:1.05rem;font-weight:600;}
-.achievement{padding:0.85rem 1rem;margin:0.45rem 0;border-radius:10px;background:#0a5c42;color:#fff!important;font-weight:800;border:3px solid #063d2c;}
-.locked-achievement{padding:0.85rem 1rem;margin:0.45rem 0;border-radius:10px;background:#fff;border:3px solid #5c4033;color:#140c08!important;font-weight:700;}
-iframe[title="streamlit_folium.st_folium"]{width:100%!important;max-width:100%!important;}
-.stButton>button{border-radius:10px!important;font-weight:800!important;font-size:1.05rem!important;}
-.stButton>button[kind="primary"],.stButton>button[data-testid="baseButton-primary"]{background:#b01030!important;color:#fff!important;border:3px solid #7a0b22!important;}
-section[data-testid="stSidebar"]{background:#ffe7c2;border-right:3px solid #8b5a2b;}
-div[data-baseweb="tab-list"] button{font-weight:800!important;color:#140c08!important;}
-div[data-baseweb="tab-list"] button[aria-selected="true"]{color:#b01030!important;}
-@media (max-width:640px){.block-container{padding-top:0.7rem!important;padding-left:0.65rem!important;padding-right:0.65rem!important;}}
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700;800&family=Syne:wght@700;800&display=swap');
+:root{--ink:#12202e;--ink-soft:#3a4f63;--frost:#e7f0f6;--snow:#f5fafc;--holly:#1a6b4a;--holly-deep:#0f4530;--berry:#c41e42;--berry-deep:#8e1530;--brass:#c9a227;--line:rgba(18,32,46,.14);}
+html,body,[class*="css"],.stMarkdown,p,label,span{font-family:Figtree,'Segoe UI',sans-serif!important;color:var(--ink)!important;}
+.stApp{background:radial-gradient(ellipse 90% 55% at 12% -10%,rgba(26,107,74,.18),transparent 55%),radial-gradient(ellipse 70% 45% at 95% 8%,rgba(196,30,66,.12),transparent 50%),linear-gradient(165deg,#dfeaf2 0%,var(--frost) 42%,var(--snow) 100%);color:var(--ink);}
+.stApp::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.35;background-image:radial-gradient(circle at 1px 1px,rgba(18,32,46,.12) 1px,transparent 0);background-size:22px 22px;}
+.block-container{position:relative;z-index:1;}
+h1,h2,h3,h4,.stMarkdown h1,.stMarkdown h2,.stMarkdown h3{font-family:Syne,Figtree,sans-serif!important;color:var(--ink)!important;font-weight:800!important;letter-spacing:-.02em;}
+.stCaption,[data-testid="stCaptionContainer"]{color:var(--ink-soft)!important;font-weight:600!important;}
+.brand-hero{text-align:center;padding:1.4rem .6rem .8rem;}
+.brand-hero .eyebrow{display:inline-block;font-size:.72rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--holly);margin:0 0 .55rem;}
+.brand-hero .brand{font-family:Syne,Figtree,sans-serif;font-size:clamp(1.75rem,6.5vw,2.75rem);font-weight:800;color:var(--ink);margin:0;line-height:1.05;letter-spacing:-.03em;}
+.brand-hero .brand em{font-style:normal;color:var(--berry);}
+.brand-hero .tagline{color:var(--ink-soft);font-size:1.05rem;font-weight:600;margin:.55rem auto 0;max-width:28rem;line-height:1.35;}
+.metric-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:.65rem;margin:.9rem 0 1.1rem;}
+.metric-card{background:rgba(245,250,252,.88);border:1px solid var(--line);border-bottom:3px solid var(--holly);border-radius:4px;padding:.85rem .45rem;text-align:center;}
+.metric-card .val{font-family:Syne,Figtree,sans-serif;font-size:1.7rem;font-weight:800;color:var(--berry);line-height:1.1;}
+.metric-card .lbl{font-size:.7rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-top:.25rem;}
+.pub-card{background:rgba(245,250,252,.92);border:1px solid var(--line);border-left:5px solid var(--berry);border-radius:4px;padding:1.05rem 1.1rem;margin:.85rem 0 1.1rem;}
+.pub-card h3{margin:0 0 .4rem!important;color:var(--ink)!important;font-size:1.2rem!important;font-family:Syne,Figtree,sans-serif!important;}
+.pub-card p{margin:0;color:var(--ink-soft);font-size:1.02rem;font-weight:600;}
+.achievement{padding:.85rem 1rem;margin:.45rem 0;border-radius:4px;background:linear-gradient(120deg,var(--holly),var(--holly-deep));color:#fff!important;font-weight:700;}
+.locked-achievement{padding:.85rem 1rem;margin:.45rem 0;border-radius:4px;background:rgba(245,250,252,.7);border:1px dashed rgba(18,32,46,.28);color:var(--ink-soft)!important;font-weight:600;}
+iframe[title="streamlit_folium.st_folium"]{width:100%!important;max-width:100%!important;border-radius:4px;}
+.stButton>button{border-radius:4px!important;font-weight:800!important;font-size:1.02rem!important;}
+.stButton>button[kind="primary"],.stButton>button[data-testid="baseButton-primary"]{background:var(--berry)!important;color:#fff!important;border:2px solid var(--berry-deep)!important;box-shadow:0 4px 0 var(--berry-deep)!important;}
+section[data-testid="stSidebar"]{background:linear-gradient(180deg,#d5e4ef,var(--frost));border-right:1px solid var(--line);}
+div[data-baseweb="tab-list"] button{font-weight:800!important;color:var(--ink-soft)!important;}
+div[data-baseweb="tab-list"] button[aria-selected="true"]{color:var(--berry)!important;}
+div[data-testid="stProgress"]>div>div{background:var(--holly)!important;}
+@media (max-width:640px){.block-container{padding-top:.7rem!important;padding-left:.7rem!important;padding-right:.7rem!important;}}
 """
 
 
@@ -85,70 +92,67 @@ def inject_theme() -> None:
 
 
 @st.cache_data
-def _elf_data_uri() -> str:
-    path = _resolve_elf_path()
+def _elf_data_uri(path_str: str, mtime: float) -> str:
+    path = Path(path_str)
     if not path.exists():
         return ""
     encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-    return "data:image/jpeg;base64," + encoded
+    mime = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
+    return "data:%s;base64,%s" % (mime, encoded)
 
 
 def inject_floating_elf() -> None:
-    """Circular elf overlay that drifts over join + main UI.
-
-    Injected as main-document CSS (not components.html) so Streamlit's sandboxed
-    iframes cannot block it. Uses .stApp::after — fixed, pointer-events:none,
-    circular crop, prefers-reduced-motion parks it bottom-right.
-    """
-    data_uri = _elf_data_uri()
+    """Circular elf overlay on join + main UI via .stApp::after (main document CSS)."""
+    path = _resolve_elf_path()
+    if not path.exists():
+        return
+    data_uri = _elf_data_uri(str(path), path.stat().st_mtime)
     if not data_uri:
         return
 
-    # Keep URI out of CSS string quotes via url("...") — data URIs are safe here
     css = f"""
 <style>
 @keyframes belfast-elf-drift {{
-  0%   {{ transform: translate(0, 0) rotate(-4deg); }}
-  20%  {{ transform: translate(28vw, 12vh) rotate(6deg); }}
-  40%  {{ transform: translate(55vw, 4vh) rotate(-3deg); }}
-  60%  {{ transform: translate(62vw, 42vh) rotate(5deg); }}
-  80%  {{ transform: translate(18vw, 55vh) rotate(-6deg); }}
-  100% {{ transform: translate(0, 0) rotate(-4deg); }}
+  0%   {{ transform: translate(0, 0) rotate(-3deg); }}
+  25%  {{ transform: translate(30vw, 10vh) rotate(5deg); }}
+  50%  {{ transform: translate(58vw, 6vh) rotate(-4deg); }}
+  75%  {{ transform: translate(22vw, 48vh) rotate(6deg); }}
+  100% {{ transform: translate(0, 0) rotate(-3deg); }}
 }}
 .stApp::after {{
   content: "";
   position: fixed !important;
   z-index: 99999 !important;
-  width: 88px;
-  height: 88px;
-  left: 12vw;
-  top: 18vh;
+  width: 104px;
+  height: 104px;
+  left: 10vw;
+  top: 16vh;
   border-radius: 50%;
   pointer-events: none !important;
-  border: 3px solid #b01030;
-  box-shadow: 0 6px 18px rgba(20, 12, 8, 0.35);
-  background: #ffe7c2 url("{data_uri}") center 18% / cover no-repeat;
-  opacity: 0.96;
+  border: none;
+  box-shadow: 0 10px 28px rgba(18, 32, 46, 0.28);
+  background: transparent url("{data_uri}") center / contain no-repeat;
+  opacity: 1;
 }}
 @media (prefers-reduced-motion: no-preference) {{
   .stApp::after {{
-    animation: belfast-elf-drift 28s ease-in-out infinite;
+    animation: belfast-elf-drift 26s ease-in-out infinite;
   }}
 }}
 @media (prefers-reduced-motion: reduce) {{
   .stApp::after {{
     animation: none !important;
     left: auto !important;
-    right: 16px !important;
+    right: 14px !important;
     top: auto !important;
-    bottom: 16px !important;
+    bottom: 14px !important;
     transform: none !important;
   }}
 }}
 @media (max-width: 640px) {{
   .stApp::after {{
-    width: 68px;
-    height: 68px;
+    width: 78px;
+    height: 78px;
   }}
 }}
 </style>
@@ -414,18 +418,18 @@ def award_achievements(participants_df: pd.DataFrame, idx: int, completed: list)
 
 def _wheel_colors(n: int) -> list:
     base = [
-        "#c41e3a",
-        "#0b6e4f",
-        "#d4a017",
-        "#e85d04",
-        "#1d7874",
-        "#9b2226",
-        "#2a9d8f",
-        "#bc6c25",
-        "#e63946",
-        "#457b9d",
-        "#f4a261",
-        "#264653",
+        "#c41e42",
+        "#1a6b4a",
+        "#c9a227",
+        "#3a4f63",
+        "#8e1530",
+        "#0f4530",
+        "#5b7c99",
+        "#a67c00",
+        "#e05a6f",
+        "#2f6f56",
+        "#12202e",
+        "#d4b84a",
     ]
     if n <= len(base):
         return base[:n]
@@ -480,34 +484,35 @@ def build_wheel_html(punishments: list, spin_deg=None, result_label: str = "") -
         ) % spin_deg
         result_block = (
             "<div id='result' style='opacity:0;transition:opacity 0.3s;margin:10px auto 0;"
-            "max-width:340px;padding:12px 14px;background:#b01030;color:#fff;font-weight:800;"
-            "font-size:1.05rem;border-radius:10px;border:3px solid #7a0b22;text-align:center;'>"
+            "max-width:340px;padding:12px 14px;background:#c41e42;color:#fff;font-weight:800;"
+            "font-size:1.05rem;border-radius:4px;border:2px solid #8e1530;text-align:center;"
+            "font-family:Figtree,Segoe UI,sans-serif;'>"
             "Landed on: %s</div>"
         ) % result_safe
 
     parts = [
         "<!DOCTYPE html><html><head><meta charset='utf-8'/>",
         "<style>",
-        "body{margin:0;background:transparent;font-family:'Segoe UI',system-ui,sans-serif;}",
+        "body{margin:0;background:transparent;font-family:Figtree,'Segoe UI',system-ui,sans-serif;}",
         ".wrap{position:relative;width:360px;height:360px;max-width:92vw;margin:24px auto 6px;}",
         ".pointer{position:absolute;top:-22px;left:50%;transform:translateX(-50%);z-index:6;",
         "width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;",
-        "border-top:34px solid #b01030;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));}",
+        "border-top:34px solid #c41e42;filter:drop-shadow(0 2px 3px rgba(18,32,46,0.35));}",
         ".pointer:after{content:'';position:absolute;top:-38px;left:-7px;width:14px;height:14px;",
-        "background:#ffd700;border:3px solid #140c08;border-radius:50%;}",
-        ".wheel{width:100%;height:100%;border-radius:50%;border:10px solid #140c08;",
-        "box-shadow:0 10px 28px rgba(20,12,8,0.28),inset 0 0 0 5px #fff8f0;",
+        "background:#c9a227;border:3px solid #12202e;border-radius:50%;}",
+        ".wheel{width:100%;height:100%;border-radius:50%;border:10px solid #12202e;",
+        "box-shadow:0 12px 30px rgba(18,32,46,0.28),inset 0 0 0 5px #e7f0f6;",
         "background:conic-gradient(from -90deg,",
         gradient,
         ");position:relative;transform:rotate(0deg);}",
         ".hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);",
         "width:52px;height:52px;border-radius:50%;z-index:3;",
-        "background:radial-gradient(circle at 35% 30%,#fff3c4,#d4a017 55%,#8a6a0a);",
-        "border:4px solid #140c08;}",
+        "background:radial-gradient(circle at 35% 30%,#e8d48a,#c9a227 55%,#8a6a0a);",
+        "border:4px solid #12202e;}",
         ".seg-label{position:absolute;top:50%;left:50%;width:120px;margin-left:-60px;margin-top:-9px;",
         "font-size:11px;font-weight:800;color:#fff;text-shadow:0 0 3px #000,0 1px 2px #000;",
         "text-align:center;line-height:1.05;pointer-events:none;}",
-        ".hint{text-align:center;color:#140c08;font-weight:700;font-size:13px;margin-top:4px;}",
+        ".hint{text-align:center;color:#12202e;font-weight:700;font-size:13px;margin-top:4px;}",
         "</style></head><body>",
         "<div class='wrap'><div class='pointer'></div><div class='wheel' id='wheel'>",
         labels_joined,
@@ -535,9 +540,10 @@ def name_entry_modal() -> None:
 
     st.markdown(
         "<div class='brand-hero'>"
-        "<p class='brand'>Mark's Belfast Christmas Crawl</p>"
-        "<p class='tagline'>16 stops · city centre to Union Street · "
-        "start at Ronnie Drew's, finish at Boombox</p>"
+        "<p class='eyebrow'>Cathedral Quarter · Christmas loop</p>"
+        "<p class='brand'>Mark's <em>Belfast</em> Christmas Crawl</p>"
+        "<p class='tagline'>16 stops from Ronnie Drew's to Boombox — "
+        "city centre frost, holly rules, and one floating elf.</p>"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -595,23 +601,23 @@ def show_map() -> None:
         ).add_to(m)
 
         coords = list(zip(PUBS_DATA["latitude"], PUBS_DATA["longitude"]))
-        folium.PolyLine(coords, color="#b01030", weight=6, opacity=0.9, tooltip="Crawl route").add_to(m)
+        folium.PolyLine(coords, color="#c41e42", weight=6, opacity=0.9, tooltip="Crawl route").add_to(m)
 
         for i, (name, lat, lon) in enumerate(
             zip(PUBS_DATA["name"], PUBS_DATA["latitude"], PUBS_DATA["longitude"])
         ):
             if name in completed:
-                label_bg = "#0a5c42"
+                label_bg = "#1a6b4a"
             elif i == current_idx:
-                label_bg = "#e67e00"
+                label_bg = "#c9a227"
             else:
-                label_bg = "#b01030"
+                label_bg = "#c41e42"
 
             icon_html = (
                 '<div style="width:30px;height:30px;border-radius:50%%;'
-                "background:%s;color:#fff;border:3px solid #140c08;"
+                "background:%s;color:#fff;border:3px solid #12202e;"
                 "font-weight:800;font-size:13px;line-height:24px;text-align:center;"
-                'box-shadow:0 2px 5px rgba(0,0,0,0.35);">%d</div>'
+                'box-shadow:0 2px 5px rgba(18,32,46,0.35);">%d</div>'
             ) % (label_bg, i + 1)
             folium.Marker(
                 [lat, lon],
@@ -626,7 +632,7 @@ def show_map() -> None:
 
         m.fit_bounds(coords, padding=(28, 28))
         st_folium(m, height=480, use_container_width=True, returned_objects=[])
-        st.caption("Green = done · Orange = current · Red = upcoming · Line = walking route")
+        st.caption("Holly = done · Brass = current · Berry = upcoming · Line = walking route")
     except Exception as e:
         st.error("Map rendering error: %s" % e)
 
@@ -802,9 +808,11 @@ def main() -> None:
         return
 
     st.markdown(
-        "<div class='brand-hero' style='padding-top:0.4rem;'>"
-        "<p class='brand' style='font-size:clamp(1.4rem,5vw,2rem);'>Mark's Belfast Christmas Crawl</p>"
-        "<p class='tagline'>Good luck, %s!</p></div>"
+        "<div class='brand-hero' style='padding-top:0.55rem;padding-bottom:0.35rem;'>"
+        "<p class='eyebrow'>Live crawl</p>"
+        "<p class='brand' style='font-size:clamp(1.45rem,5vw,2.15rem);'>"
+        "Mark's <em>Belfast</em> Christmas Crawl</p>"
+        "<p class='tagline'>Good luck, %s — keep the elf in sight.</p></div>"
         % html.escape(st.session_state.current_participant),
         unsafe_allow_html=True,
     )
