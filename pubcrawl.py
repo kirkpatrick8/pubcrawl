@@ -10,7 +10,6 @@ import html
 import io
 import math
 import random
-import time
 from datetime import datetime
 from pathlib import Path
 
@@ -123,10 +122,10 @@ def inject_floating_elf() -> None:
   content: "";
   position: fixed !important;
   z-index: 99999 !important;
-  width: 104px;
-  height: 104px;
-  left: 10vw;
-  top: 16vh;
+  width: 168px;
+  height: 168px;
+  left: 8vw;
+  top: 14vh;
   border-radius: 50%;
   pointer-events: none !important;
   border: none;
@@ -151,8 +150,8 @@ def inject_floating_elf() -> None:
 }}
 @media (max-width: 640px) {{
   .stApp::after {{
-    width: 78px;
-    height: 78px;
+    width: 128px;
+    height: 128px;
   }}
 }}
 </style>
@@ -272,9 +271,27 @@ def save_data(participants_df: pd.DataFrame, punishments_df: pd.DataFrame) -> No
         st.sidebar.error("Save error (using session fallback): %s" % e)
 
 
+def save_punishments_only(punishments_df: pd.DataFrame) -> None:
+    """Wheel spins only need the punishments log — skip rewriting participants."""
+    try:
+        if USE_GITHUB:
+            _save_github_csv("punishments.csv", punishments_df)
+        else:
+            _ensure_local_templates()
+            punishments_df.to_csv(PUNISHMENTS_CSV, index=False)
+            st.session_state["_local_punishments"] = punishments_df.to_csv(index=False)
+    except Exception as e:
+        st.session_state["_local_punishments"] = punishments_df.to_csv(index=False)
+        st.sidebar.error("Punishment save error: %s" % e)
+
+
+def invalidate_data_cache() -> None:
+    """Clear only crawl CSV cache — keep elf image / other caches warm."""
+    load_data.clear()
+
+
 def auto_refresh() -> None:
-    st.cache_data.clear()
-    time.sleep(0.05)
+    invalidate_data_cache()
     st.rerun()
 
 
@@ -476,10 +493,10 @@ def build_wheel_html(punishments: list, spin_deg=None, result_label: str = "") -
             "w.style.transition='none';"
             "w.style.transform='rotate(0deg)';"
             "requestAnimationFrame(function(){requestAnimationFrame(function(){"
-            "w.style.transition='transform 3.2s cubic-bezier(0.12,0.75,0.08,1)';"
+            "w.style.transition='transform 1.85s cubic-bezier(0.12,0.75,0.08,1)';"
             "w.style.transform='rotate(%.2fdeg)';"
             "});});"
-            "setTimeout(function(){if(r){r.style.opacity='1';}},3300);"
+            "setTimeout(function(){if(r){r.style.opacity='1';}},1900);"
             "})();</script>"
         ) % spin_deg
         result_block = (
@@ -570,6 +587,7 @@ def name_entry_modal() -> None:
                     )
                     participants_df = pd.concat([participants_df, new_p], ignore_index=True)
                     save_data(participants_df, punishments_df)
+                st.session_state["_current_pub_idx"] = 0
                 auto_refresh()
             else:
                 st.warning("Please enter a name.")
@@ -650,28 +668,44 @@ def show_punishment_wheel() -> None:
         st.session_state.wheel_token = 0
 
     if st.button("Spin the Wheel!", type="primary", use_container_width=True):
+        # Set spin state first so the next paint can start the animation ASAP
         idx = random.randrange(n)
-        deg = spin_target_degrees(idx, n, extra_turns=random.randint(4, 6))
+        deg = spin_target_degrees(idx, n, extra_turns=random.randint(3, 4))
+        result = PUNISHMENTS[idx]
         st.session_state.wheel_spin_deg = deg
-        st.session_state.wheel_result = PUNISHMENTS[idx]
+        st.session_state.wheel_result = result
         st.session_state.wheel_token = int(st.session_state.wheel_token) + 1
-        participants_df, punishments_df = load_data()
-        row = participants_df[participants_df["Name"] == st.session_state.current_participant]
-        curr = int(row.iloc[0]["CurrentPub"]) if not row.empty else 0
+
+        # Light logging: session pub index when known; only rewrite punishments CSV
+        curr = int(st.session_state.get("_current_pub_idx", 0))
+        if "_current_pub_idx" not in st.session_state:
+            try:
+                participants_df, _ = load_data()
+                row = participants_df[
+                    participants_df["Name"] == st.session_state.current_participant
+                ]
+                if not row.empty:
+                    curr = int(row.iloc[0]["CurrentPub"])
+                    st.session_state["_current_pub_idx"] = curr
+            except Exception:
+                curr = 0
         pub_name = PUBS_DATA["name"][min(curr, 15)]
-        new_p = pd.DataFrame(
-            [
-                {
-                    "Time": datetime.now().strftime("%H:%M:%S"),
-                    "Name": st.session_state.current_participant,
-                    "Pub": pub_name,
-                    "Punishment": PUNISHMENTS[idx],
-                }
-            ]
-        )
-        punishments_df = pd.concat([punishments_df, new_p], ignore_index=True)
-        save_data(participants_df, punishments_df)
-        st.cache_data.clear()
+        new_row = {
+            "Time": datetime.now().strftime("%H:%M:%S"),
+            "Name": st.session_state.current_participant,
+            "Pub": pub_name,
+            "Punishment": result,
+        }
+        try:
+            _, punishments_df = load_data()
+            punishments_df = pd.concat(
+                [punishments_df, pd.DataFrame([new_row])], ignore_index=True
+            )
+            save_punishments_only(punishments_df)
+            invalidate_data_cache()
+        except Exception as e:
+            st.session_state.setdefault("_pending_punishments", []).append(new_row)
+            st.caption("Logged locally — sync retry next refresh (%s)" % e)
 
     wheel_html = build_wheel_html(
         PUNISHMENTS,
@@ -683,7 +717,7 @@ def show_punishment_wheel() -> None:
         "<body data-spin='%d'>" % int(st.session_state.wheel_token),
         1,
     )
-    components.html(wheel_html, height=520)
+    components.html(wheel_html, height=480)
 
     if st.session_state.wheel_result:
         st.success("Punishment: **%s**" % st.session_state.wheel_result)
@@ -747,6 +781,7 @@ def show_progress(name: str) -> None:
             participants_df.loc[idx, "CurrentPub"] = current_pub_idx + 1
             participants_df.loc[idx, "Points"] = int(participants_df.loc[idx, "Points"]) + 100
             newly = award_achievements(participants_df, idx, completed)
+            st.session_state["_current_pub_idx"] = current_pub_idx + 1
             save_data(participants_df, punishments_df)
             if newly:
                 st.session_state["_flash_achievements"] = newly
