@@ -28,18 +28,21 @@ st.set_page_config(
 )
 
 APP_DIR = Path(__file__).resolve().parent
-# Prefer compact float crop for CSS inject size; fall back to full photo
-ELF_PATH = next(
-    (
-        p
-        for p in (
-            APP_DIR / "assets" / "elf-mascot-float.jpg",
-            APP_DIR / "assets" / "elf-mascot.jpg",
-        )
-        if p.exists()
-    ),
-    APP_DIR / "assets" / "elf-mascot.jpg",
-)
+# Prefer compact float crop; accept .jpg or .jpeg (GitHub uploads often use .jpeg)
+def _resolve_elf_path() -> Path:
+    candidates = (
+        APP_DIR / "assets" / "elf-mascot-float.jpg",
+        APP_DIR / "assets" / "elf-mascot-float.jpeg",
+        APP_DIR / "assets" / "elf-mascot.jpg",
+        APP_DIR / "assets" / "elf-mascot.jpeg",
+    )
+    for p in candidates:
+        if p.exists():
+            return p
+    return candidates[0]
+
+
+ELF_PATH = _resolve_elf_path()
 PARTICIPANTS_CSV = APP_DIR / "participants.csv"
 PUNISHMENTS_CSV = APP_DIR / "punishments.csv"
 PARTICIPANT_COLS = ["Name", "CurrentPub", "CompletedPubs", "Points", "Achievements", "StartTime"]
@@ -83,9 +86,10 @@ def inject_theme() -> None:
 
 @st.cache_data
 def _elf_data_uri() -> str:
-    if not ELF_PATH.exists():
+    path = _resolve_elf_path()
+    if not path.exists():
         return ""
-    encoded = base64.b64encode(ELF_PATH.read_bytes()).decode("ascii")
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
     return "data:image/jpeg;base64," + encoded
 
 
