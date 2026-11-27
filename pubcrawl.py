@@ -8,7 +8,6 @@ import base64
 import colorsys
 import html
 import io
-import json
 import math
 import random
 import time
@@ -29,7 +28,18 @@ st.set_page_config(
 )
 
 APP_DIR = Path(__file__).resolve().parent
-ELF_PATH = APP_DIR / "assets" / "elf-mascot.jpg"
+# Prefer compact float crop for CSS inject size; fall back to full photo
+ELF_PATH = next(
+    (
+        p
+        for p in (
+            APP_DIR / "assets" / "elf-mascot-float.jpg",
+            APP_DIR / "assets" / "elf-mascot.jpg",
+        )
+        if p.exists()
+    ),
+    APP_DIR / "assets" / "elf-mascot.jpg",
+)
 PARTICIPANTS_CSV = APP_DIR / "participants.csv"
 PUNISHMENTS_CSV = APP_DIR / "punishments.csv"
 PARTICIPANT_COLS = ["Name", "CurrentPub", "CompletedPubs", "Points", "Achievements", "StartTime"]
@@ -61,12 +71,6 @@ section[data-testid="stSidebar"]{background:#ffe7c2;border-right:3px solid #8b5a
 div[data-baseweb="tab-list"] button{font-weight:800!important;color:#140c08!important;}
 div[data-baseweb="tab-list"] button[aria-selected="true"]{color:#b01030!important;}
 @media (max-width:640px){.block-container{padding-top:0.7rem!important;padding-left:0.65rem!important;padding-right:0.65rem!important;}}
-#belfast-elf-mascot{position:fixed!important;z-index:99999!important;width:88px;height:88px;border-radius:50%;overflow:hidden;pointer-events:none!important;border:3px solid #b01030;box-shadow:0 6px 18px rgba(20,12,8,0.35);background:#ffe7c2 center/cover no-repeat;left:12vw;top:18vh;opacity:0.96;}
-#belfast-elf-mascot img{width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block;border-radius:50%;pointer-events:none;}
-@keyframes belfast-elf-drift{0%{transform:translate(0,0) rotate(-4deg);}20%{transform:translate(28vw,12vh) rotate(6deg);}40%{transform:translate(55vw,4vh) rotate(-3deg);}60%{transform:translate(62vw,42vh) rotate(5deg);}80%{transform:translate(18vw,55vh) rotate(-6deg);}100%{transform:translate(0,0) rotate(-4deg);}}
-@media (prefers-reduced-motion:no-preference){#belfast-elf-mascot.elf-drifting{animation:belfast-elf-drift 28s ease-in-out infinite;}}
-@media (prefers-reduced-motion:reduce){#belfast-elf-mascot{animation:none!important;left:auto!important;right:16px!important;top:auto!important;bottom:16px!important;transform:none!important;}}
-@media (max-width:640px){#belfast-elf-mascot{width:68px;height:68px;}}
 """
 
 
@@ -86,83 +90,66 @@ def _elf_data_uri() -> str:
 
 
 def inject_floating_elf() -> None:
-    """Mount a circular elf overlay on the parent Streamlit document so it floats
-    across join + main UI. pointer-events:none; respects prefers-reduced-motion.
+    """Circular elf overlay that drifts over join + main UI.
+
+    Injected as main-document CSS (not components.html) so Streamlit's sandboxed
+    iframes cannot block it. Uses .stApp::after — fixed, pointer-events:none,
+    circular crop, prefers-reduced-motion parks it bottom-right.
     """
     data_uri = _elf_data_uri()
     if not data_uri:
         return
 
-    # components.html runs in an iframe; reach parent.document for a true fixed overlay
-    bootstrap = """
-<!DOCTYPE html><html><body style="margin:0;background:transparent;">
-<script>
-(function () {
-  var doc;
-  try { doc = window.parent.document; } catch (e) { return; }
-  if (!doc || !doc.body) return;
-
-  var id = "belfast-elf-mascot";
-  var existing = doc.getElementById(id);
-  if (existing) {
-    var img0 = existing.querySelector("img");
-    if (img0 && img0.getAttribute("src") !== %SRC%) {
-      img0.setAttribute("src", %SRC%);
-    }
-    existing.classList.add("elf-drifting");
-    return;
-  }
-
-  var el = doc.createElement("div");
-  el.id = id;
-  el.className = "elf-drifting";
-  el.setAttribute("aria-hidden", "true");
-  el.style.cssText = [
-    "position:fixed", "z-index:99999", "width:88px", "height:88px",
-    "border-radius:50%", "overflow:hidden", "pointer-events:none",
-    "border:3px solid #b01030", "box-shadow:0 6px 18px rgba(20,12,8,0.35)",
-    "left:12vw", "top:18vh", "opacity:0.96", "background:#ffe7c2"
-  ].join(";");
-
-  var img = doc.createElement("img");
-  img.src = %SRC%;
-  img.alt = "";
-  img.style.cssText = "width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block;border-radius:50%;pointer-events:none;";
-  el.appendChild(img);
-  doc.body.appendChild(el);
-
-  // Extra playful JS drift when CSS animation is available; skip if reduced motion
-  var reduce = false;
-  try {
-    reduce = window.parent.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch (e) {}
-  if (reduce) {
-    el.style.left = "auto";
-    el.style.right = "16px";
-    el.style.top = "auto";
-    el.style.bottom = "16px";
-    el.style.animation = "none";
-    return;
-  }
-
-  // Soft secondary nudge so path feels less mechanical across remounts
-  var t0 = Date.now();
-  function nudge() {
-    if (!doc.getElementById(id)) return;
-    var t = (Date.now() - t0) / 1000;
-    var dx = Math.sin(t / 3.7) * 10;
-    var dy = Math.cos(t / 4.9) * 8;
-    el.style.marginLeft = dx.toFixed(1) + "px";
-    el.style.marginTop = dy.toFixed(1) + "px";
-    window.parent.requestAnimationFrame(nudge);
-  }
-  window.parent.requestAnimationFrame(nudge);
-})();
-</script>
-</body></html>
+    # Keep URI out of CSS string quotes via url("...") — data URIs are safe here
+    css = f"""
+<style>
+@keyframes belfast-elf-drift {{
+  0%   {{ transform: translate(0, 0) rotate(-4deg); }}
+  20%  {{ transform: translate(28vw, 12vh) rotate(6deg); }}
+  40%  {{ transform: translate(55vw, 4vh) rotate(-3deg); }}
+  60%  {{ transform: translate(62vw, 42vh) rotate(5deg); }}
+  80%  {{ transform: translate(18vw, 55vh) rotate(-6deg); }}
+  100% {{ transform: translate(0, 0) rotate(-4deg); }}
+}}
+.stApp::after {{
+  content: "";
+  position: fixed !important;
+  z-index: 99999 !important;
+  width: 88px;
+  height: 88px;
+  left: 12vw;
+  top: 18vh;
+  border-radius: 50%;
+  pointer-events: none !important;
+  border: 3px solid #b01030;
+  box-shadow: 0 6px 18px rgba(20, 12, 8, 0.35);
+  background: #ffe7c2 url("{data_uri}") center 18% / cover no-repeat;
+  opacity: 0.96;
+}}
+@media (prefers-reduced-motion: no-preference) {{
+  .stApp::after {{
+    animation: belfast-elf-drift 28s ease-in-out infinite;
+  }}
+}}
+@media (prefers-reduced-motion: reduce) {{
+  .stApp::after {{
+    animation: none !important;
+    left: auto !important;
+    right: 16px !important;
+    top: auto !important;
+    bottom: 16px !important;
+    transform: none !important;
+  }}
+}}
+@media (max-width: 640px) {{
+  .stApp::after {{
+    width: 68px;
+    height: 68px;
+  }}
+}}
+</style>
 """
-    bootstrap = bootstrap.replace("%SRC%", json.dumps(data_uri))
-    components.html(bootstrap, height=0, width=0)
+    st.markdown(css, unsafe_allow_html=True)
 
 
 try:
